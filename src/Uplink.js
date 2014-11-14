@@ -125,7 +125,7 @@ class Uplink {
 
   bindIOHandlers() {
     Object.keys(ioHandlers)
-    .forEach((event) => this.io.on(event, (params) => ioHandlers[event].call(this, params)));
+    .forEach((event) => this.io.on(event, (jsonParams) => ioHandlers[event].call(this, JSON.parse(params))));
   }
 
   push(event, params) {
