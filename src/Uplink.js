@@ -62,24 +62,20 @@ const ioHandlers = {
 
   },
 
-  debug(params) {
-    _.dev(() => params.should.be.an.Object);
-    console.table(params);
+  debug(...args) {
+    console.table(...args);
   },
 
-  log({ message }) {
-    _.dev(() => message.should.be.a.String);
-    console.log(message);
+  log(...args) {
+    console.log(...args);
   },
 
-  warn({ message }) {
-    _.dev(() => message.should.be.a.String);
-    console.warn(message);
+  warn(...args) {
+    console.warn(...args);
   },
 
-  err({ message }) {
-    _.dev(() => message.should.be.a.String);
-    console.error(message);
+  err(...args) {
+    console.error(...args);
   },
 };
 
