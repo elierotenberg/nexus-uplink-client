@@ -52,7 +52,8 @@ const ioHandlers = {
     }
     else {
       this.pull(path, { bypassCache: true })
-      .then((value) => this.store[path] = { value, hash: _.hash(value) });
+      .then((value) => this.store[path] = { value, hash: _.hash(value) })
+      .then(() => this.update(path, this.store[path]));
     }
   },
 
