@@ -1,8 +1,8 @@
 const _ = require('lodash-next');
 
 const io = require('socket.io-client');
+const relative = require('url').resolve;
 const request = _.isServer() ? require('request') : require('browser-request');
-const resolve = require('url').resolve;
 const should = _.should;
 
 const Listener = require('./Listener');
@@ -89,8 +89,8 @@ class Uplink {
     _.dev(() => url.should.be.a.String &&
       guid.should.be.a.String
     );
-    this.http = resolve(url, 'http');
-    this.io = io(resolve(url, 'io'));
+    this.http = url;
+    this.io = io(url);
     this.pid = null;
     this.guid = guid;
     this.shouldReloadOnServerRestart = shouldReloadOnServerRestart;
@@ -149,7 +149,7 @@ class Uplink {
 
   fetch(path) {
     return new Promise((resolve, reject) =>
-      request({ method: 'GET', url: resolve(this.http, path), json: true }, (err, res, body) => err ? reject(err) : resolve(body))
+      request({ method: 'GET', url: relative(this.http, path), json: true }, (err, res, body) => err ? reject(err) : resolve(body))
     );
   }
 
@@ -158,7 +158,7 @@ class Uplink {
       params.should.be.an.Object
     );
     return new Promise((resolve, reject) =>
-      request({ method: 'POST', url: resolve(this.http, path), json: true, body: _.extend({}, params, { guid: this.guid }) }, (err, res, body) => err ? reject(err) : resolve(body))
+      request({ method: 'POST', url: relative(this.http, path), json: true, body: _.extend({}, params, { guid: this.guid }) }, (err, res, body) => err ? reject(err) : resolve(body))
     );
   }
 
