@@ -1,5 +1,4 @@
 const _ = require('lodash-next');
-const should = _.should;
 
 class Subscription {
 	constructor({ path, handler }) {

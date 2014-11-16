@@ -3,7 +3,6 @@ const _ = require('lodash-next');
 const io = require('socket.io-client');
 const relative = require('url').resolve;
 const request = _.isServer() ? require('request') : require('browser-request');
-const should = _.should;
 
 const Listener = require('./Listener');
 const Subscription = require('./Subscription');
@@ -32,7 +31,7 @@ const ioHandlers = {
       window.location.reload();
     }
     this.pid = pid;
-    this._handshake({ pid, guid });
+    this._handshake({ pid });
   },
 
   update({ path, diff, hash }) {
@@ -121,7 +120,7 @@ class Uplink {
 
   bindIOHandlers() {
     Object.keys(ioHandlers)
-    .forEach((event) => this.io.on(event, (jsonParams) => ioHandlers[event].call(this, JSON.parse(params))));
+    .forEach((event) => this.io.on(event, (jsonParams) => ioHandlers[event].call(this, JSON.parse(jsonParams))));
   }
 
   push(event, params) {
@@ -154,7 +153,7 @@ class Uplink {
       params.should.be.an.Object
     );
     return new Promise((resolve, reject) =>
-      request({ method: 'POST', url: relative(this.http, path), json: true, body: _.extend({}, params, { guid: this.guid }) }, (err, res, body) => err ? reject(err) : resolve(body))
+      request({ method: 'POST', url: relative(this.http, action), json: true, body: _.extend({}, params, { guid: this.guid }) }, (err, res, body) => err ? reject(err) : resolve(body))
     );
   }
 
@@ -187,7 +186,7 @@ class Uplink {
     let deletedPath = subscription.removeFrom(this.subscriptions);
     if(deletedPath) {
       this._remoteUnsubscribeFrom(subscription.path);
-      delete this.store[path];
+      delete this.store[subscription.path];
     }
     return { subscription, deletedPath };
   }
@@ -226,7 +225,7 @@ class Uplink {
 
   unlistenFrom(listener) {
     _.dev(() => listener.should.be.an.instanceOf(Listener));
-    let deletedRoom = subscription.removeFrom(this.listeners);
+    let deletedRoom = listener.removeFrom(this.listeners);
     if(deletedRoom) {
       this._remoteUnlistenFrom(listener.room);
     }
