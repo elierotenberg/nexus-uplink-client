@@ -13,7 +13,7 @@ const Subscription = require('./Subscription');
 // and method naming collisions.
 const ioHandlers = {
   connect() {
-    this.io.emit('handshake', { guid: this.guid });
+    this.emit('handshake', { guid: this.guid });
   },
 
   reconnect() {
