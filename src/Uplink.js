@@ -120,10 +120,14 @@ class Uplink {
 
   bindIOHandlers() {
     Object.keys(ioHandlers)
-    .forEach((event) => this.io.on(event, (params) => ioHandlers[event].call(this, _.prollyparse(params))));
+    .forEach((event) => this.io.on(event, (params) => {
+      _.dev(() => console.warn('nexus-uplink-client', '<<', event, params));
+      return ioHandlers[event].call(this, _.prollyparse(params));
+    }));
   }
 
   push(event, params) {
+    _.dev(() => console.warn('nexus-uplink-client', '>>', event, params));
     this.io.emit(event, params);
     return this;
   }
