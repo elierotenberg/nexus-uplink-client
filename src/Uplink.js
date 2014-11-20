@@ -13,7 +13,7 @@ const Subscription = require('./Subscription');
 // and method naming collisions.
 const ioHandlers = {
   connect() {
-    this.emit('handshake', { guid: this.guid });
+    this.push('handshake', { guid: this.guid });
   },
 
   reconnect() {
@@ -59,7 +59,6 @@ const ioHandlers = {
   emit({ room, params }) {
     _.dev(() => room.should.be.a.String && params.should.be.an.Object);
     this.emit(room, params);
-
   },
 
   debug(...args) {
