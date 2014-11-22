@@ -24,17 +24,17 @@
     "gulp-plumber": "^0.6.6",
     "gulp-sourcemaps": "^1.2.8",
     "gulp-util": "^3.0.1",
-    "gulp-6to5": "^1.0.1",
+    "gulp-6to5": "^1.0.2",
     "jshint-stylish": "^1.0.0"
   },
   "dependencies": {
-    "6to5": "^1.11.3",
+    "6to5": "^1.13.0",
     "bluebird": "^2.3.11",
     "browser-request": "^0.3.2",
-    "co": "^3.1.0",
-    "lodash-next": "^1.6.1",
+    "co": "^4.0.0",
+    "lodash-next": "^1.7.0",
     "request": "^2.48.0",
-    "should": "^4.2.1",
-    "socket.io-client": "^1.2.0"
+    "should": "^4.3.0",
+    "socket.io-client": "^1.2.1"
   }
 }
