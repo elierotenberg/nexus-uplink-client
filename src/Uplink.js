@@ -11,30 +11,30 @@ const Subscription = require('./Subscription');
 // (using .call). In their body 'this' is therefore an Uplink instance.
 // They are declared here to avoid cluttering the Uplink class definition
 // and method naming collisions.
-const ioHandlers = {
-  connect() {
+const ioHandlers = _.mapValues({
+  *connect() {
     this.push('handshake', { guid: this.guid });
   },
 
-  reconnect() {
+  *reconnect() {
     // TODO
     // Handle reconnections properly.
   },
 
-  disconnect() {
+  *disconnect() {
     // TODO
     // Handle disconnections properly
   },
 
-  handshakeAck({ pid }) {
+  *handshakeAck({ pid }) {
     if(this.pid !== null && pid !== this.pid && this.shouldReloadOnServerRestart && _.isClient()) {
       window.location.reload();
     }
     this.pid = pid;
-    this._handshake({ pid });
+    this._handshake.resolve({ pid });
   },
 
-  update({ path, diff, hash }) {
+  *update({ path, diff, hash }) {
     // At the uplink level, updates are transmitted
     // as (diff, hash). If the uplink client has
     // a cached value with the matching hash, then
@@ -50,33 +50,33 @@ const ioHandlers = {
       this.update(path, this.store[path]);
     }
     else {
-      this.pull(path, { bypassCache: true })
-      .then((value) => this.store[path] = { value, hash: _.hash(value) })
-      .then(() => this.update(path, this.store[path]));
+      let value = yield this.pull(path, { bypassCache: true });
+      this.store[path] = { value, hash: _.hash(value) };
+      this.update(path, this.store[path]);
     }
   },
 
-  emit({ room, params }) {
+  *emit({ room, params }) {
     _.dev(() => room.should.be.a.String && params.should.be.an.Object);
     this.emit(room, params);
   },
 
-  debug(...args) {
+  *debug(...args) {
     console.table(...args);
   },
 
-  log(...args) {
+  *log(...args) {
     console.log(...args);
   },
 
-  warn(...args) {
+  *warn(...args) {
     console.warn(...args);
   },
 
-  err(...args) {
+  *err(...args) {
     console.error(...args);
   },
-};
+}, _.co.wrap);
 
 class Uplink {
   constructor({ url, guid, shouldReloadOnServerRestart }) {
@@ -121,7 +121,8 @@ class Uplink {
     Object.keys(ioHandlers)
     .forEach((event) => this.io.on(event, (params) => {
       _.dev(() => console.warn('nexus-uplink-client', '<<', event, params));
-      return ioHandlers[event].call(this, _.prollyparse(params));
+      ioHandlers[event].call(this, _.prollyparse(params))
+      .catch((e) => _.dev(() => console.error({ event, params, err: e.toString(), stack: e.stack })));
     }));
   }
 
