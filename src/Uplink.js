@@ -2,7 +2,7 @@ const _ = require('lodash-next');
 
 const io = require('socket.io-client');
 const relative = require('url').resolve;
-const request = _.isServer() ? require('request') : require('browser-request');
+const request = require('request');
 
 const Listener = require('./Listener');
 const Subscription = require('./Subscription');

@@ -10,6 +10,9 @@
     "type": "git",
     "url": "https://github.com/elierotenberg/nexus-uplink-client.git"
   },
+  "browser": {
+    "request": "./node_modules/browser-request/index.js"
+  },
   "author": "Elie Rotenberg <elie@rotenberg.io>",
   "license": "MIT",
   "bugs": {
