@@ -27,7 +27,7 @@ const ioHandlers = _.mapValues({
   },
 
   *handshakeAck({ pid }) {
-    if(this.pid !== null && pid !== this.pid && this.shouldReloadOnServerRestart && _.isClient()) {
+    if(this.pid !== null && pid !== this.pid && this.shouldReloadOnServerRestart && (__BROWSER__)) {
       window.location.reload();
     }
     this.pid = pid;

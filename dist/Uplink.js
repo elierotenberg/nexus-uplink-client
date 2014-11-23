@@ -68,7 +68,7 @@ var ioHandlers = _.mapValues({
     return regeneratorRuntime.wrap(function _callee4$(_context4) {
       while (true) switch (_context4.prev = _context4.next) {
         case 0: pid = _ref.pid;
-          if (_this2.pid !== null && pid !== _this2.pid && _this2.shouldReloadOnServerRestart && _.isClient()) {
+          if (_this2.pid !== null && pid !== _this2.pid && _this2.shouldReloadOnServerRestart && (__BROWSER__)) {
             window.location.reload();
           }
           _this2.pid = pid;
