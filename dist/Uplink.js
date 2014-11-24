@@ -139,11 +139,10 @@ var ioHandlers = _.mapValues({
   }),
 
   debug: regeneratorRuntime.mark(function _callee7() {
-    var _arguments = arguments;
     var args;
     return regeneratorRuntime.wrap(function _callee7$(_context7) {
       while (true) switch (_context7.prev = _context7.next) {
-        case 0: args = _argumentsToArray(_arguments);
+        case 0: args = _argumentsToArray(arguments);
           console.table.apply(console, _toArray(args));
         case 2:
         case "end": return _context7.stop();
@@ -152,11 +151,10 @@ var ioHandlers = _.mapValues({
   }),
 
   log: regeneratorRuntime.mark(function _callee8() {
-    var _arguments2 = arguments;
     var args;
     return regeneratorRuntime.wrap(function _callee8$(_context8) {
       while (true) switch (_context8.prev = _context8.next) {
-        case 0: args = _argumentsToArray(_arguments2);
+        case 0: args = _argumentsToArray(arguments);
           console.log.apply(console, _toArray(args));
         case 2:
         case "end": return _context8.stop();
@@ -165,11 +163,10 @@ var ioHandlers = _.mapValues({
   }),
 
   warn: regeneratorRuntime.mark(function _callee9() {
-    var _arguments3 = arguments;
     var args;
     return regeneratorRuntime.wrap(function _callee9$(_context9) {
       while (true) switch (_context9.prev = _context9.next) {
-        case 0: args = _argumentsToArray(_arguments3);
+        case 0: args = _argumentsToArray(arguments);
           console.warn.apply(console, _toArray(args));
         case 2:
         case "end": return _context9.stop();
@@ -178,11 +175,10 @@ var ioHandlers = _.mapValues({
   }),
 
   err: regeneratorRuntime.mark(function _callee10() {
-    var _arguments4 = arguments;
     var args;
     return regeneratorRuntime.wrap(function _callee10$(_context10) {
       while (true) switch (_context10.prev = _context10.next) {
-        case 0: args = _argumentsToArray(_arguments4);
+        case 0: args = _argumentsToArray(arguments);
           console.error.apply(console, _toArray(args));
         case 2:
         case "end": return _context10.stop();

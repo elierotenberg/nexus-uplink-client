@@ -14,7 +14,7 @@ class Listener {
       listeners[this.action] = {};
     }
     _.dev(() => listeners[this.action].should.be.an.Object &&
-      listeners.should.not.have.property(this.id)
+      (listeners[this.id] === void 0).should.be.ok
     );
     listeners[this.action][this.id] = this;
     return Object.keys(listeners[this.action]).length === 1;
@@ -22,9 +22,10 @@ class Listener {
 
   removeFrom(listeners) {
     _.dev(() => listeners.should.be.an.Object &&
-      listeners.should.have.property(this.action) &&
+      (listeners[this.action] !== void 0).should.be.ok &&
       listeners[this.action].should.be.an.Object &&
-      listeners[this.action].should.have.property(this.id, this)
+      (listeners[this.action][this.id] !== void 0).should.be.ok &&
+      listeners[this.action][this.id].should.be.exactly(this)
     );
     delete listeners[this.action][this.id];
     if(Object.keys(listeners[this.action]).length === 0) {

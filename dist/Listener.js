@@ -29,7 +29,7 @@ var Listener = (function () {
           listeners[this.action] = {};
         }
         _.dev(function () {
-          return listeners[_this.action].should.be.an.Object && listeners.should.not.have.property(_this.id);
+          return listeners[_this.action].should.be.an.Object && (listeners[_this.id] === void 0).should.be.ok;
         });
         listeners[this.action][this.id] = this;
         return Object.keys(listeners[this.action]).length === 1;
@@ -40,7 +40,7 @@ var Listener = (function () {
       value: function (listeners) {
         var _this2 = this;
         _.dev(function () {
-          return listeners.should.be.an.Object && listeners.should.have.property(_this2.action) && listeners[_this2.action].should.be.an.Object && listeners[_this2.action].should.have.property(_this2.id, _this2);
+          return listeners.should.be.an.Object && (listeners[_this2.action] !== void 0).should.be.ok && listeners[_this2.action].should.be.an.Object && (listeners[_this2.action][_this2.id] !== void 0).should.be.ok && listeners[_this2.action][_this2.id].should.be.exactly(_this2);
         });
         delete listeners[this.action][this.id];
         if (Object.keys(listeners[this.action]).length === 0) {

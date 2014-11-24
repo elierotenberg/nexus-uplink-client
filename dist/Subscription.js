@@ -29,7 +29,7 @@ var Subscription = (function () {
           subscriptions[this.path] = {};
         }
         _.dev(function () {
-          return subscriptions[_this.path].should.be.an.Object && subscriptions[_this.path].should.not.have.property(_this.id);
+          return subscriptions[_this.path].should.be.an.Object && (subscriptions[_this.path][_this.id] !== void 0).should.be.ok;
         });
         subscriptions[this.path][this.id] = this;
         return Object.keys(subscriptions[this.path]).length === 1;
@@ -40,7 +40,7 @@ var Subscription = (function () {
       value: function (subscriptions) {
         var _this2 = this;
         _.dev(function () {
-          return subscriptions.should.be.an.Object && subscriptions.should.have.property(_this2.path) && subscriptions[_this2.path].shoulbe.be.an.Object && subscriptions[_this2.path].should.have.property(_this2.id, _this2);
+          return subscriptions.should.be.an.Object && (subscriptions[_this2.path] !== void 0).should.be.ok && subscriptions[_this2.path].should.be.an.Object && (subscriptions[_this2.path][_this2.id] !== void 0).should.be.ok && subscriptions[_this2.path][_this2.id].should.be.exactly(_this2);
         });
         delete subscriptions[this.path][this.id];
         if (Object.keys(subscriptions[this.path]).length === 0) {
