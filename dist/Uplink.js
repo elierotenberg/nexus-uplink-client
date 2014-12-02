@@ -188,6 +188,9 @@ var Uplink = (function () {
       return url.should.be.a.String && guid.should.be.a.String;
     });
     this.http = url;
+    _.dev(function () {
+      return console.warn("nexus-uplink-client", ">>", "connect", { url: url });
+    });
     this.io = io(url);
     this.pid = null;
     this.guid = guid;
@@ -208,7 +211,7 @@ var Uplink = (function () {
       value: function () {
         var _this6 = this;
         // Cancel all pending requests/active subscriptions/listeners
-        if (!this.handshake.isResolved()) {
+        if (!this.pid) {
           this.handshake.cancel();
         }
         Object.keys(this.subscriptions).forEach(function (path) {

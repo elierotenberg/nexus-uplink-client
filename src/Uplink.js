@@ -50,7 +50,7 @@ const ioHandlers = _.mapValues({
       this.update(path, this.store[path]);
     }
     else {
-      let value = yield this.pull(path, { bypassCache: true });
+      const value = yield this.pull(path, { bypassCache: true });
       this.store[path] = { value, hash: _.hash(value) };
       this.update(path, this.store[path]);
     }
@@ -84,6 +84,7 @@ class Uplink {
       guid.should.be.a.String
     );
     this.http = url;
+    _.dev(() => console.warn('nexus-uplink-client', '>>', 'connect', { url }));
     this.io = io(url);
     this.pid = null;
     this.guid = guid;
@@ -98,7 +99,7 @@ class Uplink {
 
   destroy() {
     // Cancel all pending requests/active subscriptions/listeners
-    if(!this.handshake.isResolved()) {
+    if(!this.pid) {
       this.handshake.cancel();
     }
     Object.keys(this.subscriptions)
