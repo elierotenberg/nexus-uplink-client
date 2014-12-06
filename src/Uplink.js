@@ -44,7 +44,7 @@ const ioHandlers = _.mapValues({
     if(!this.store[path]) {
       return;
     }
-    const value = this.store[path].hash === hash ? _.patch(this.store[path], diff) : yield this.pull(path, { bypassCache: true });
+    const value = this.store[path].hash === hash ? _.patch(this.store[path].value, diff) : yield this.pull(path, { bypassCache: true });
     this.store[path] = { value, hash: _.hash(value) };
     this.update(path, value);
   },

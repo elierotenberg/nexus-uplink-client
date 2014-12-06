@@ -92,7 +92,7 @@ var ioHandlers = _.mapValues({
             _context5.next = 10;
             break;
           }
-          _context5.t0 = _.patch(_this3.store[path], diff);
+          _context5.t0 = _.patch(_this3.store[path].value, diff);
           _context5.next = 13;
           break;
         case 10: _context5.next = 12;
