@@ -68,7 +68,7 @@ var ioHandlers = _.mapValues({
 
   update: regeneratorRuntime.mark(function _callee5(_ref2) {
     var _this3 = this;
-    var path, diff, hash, value;
+    var path, diff, hash, tick;
     return regeneratorRuntime.wrap(function _callee5$(_context5) {
       while (true) switch (_context5.prev = _context5.next) {
         case 0: path = _ref2.path;
@@ -82,27 +82,31 @@ var ioHandlers = _.mapValues({
           _.dev(function () {
             return path.should.be.a.String;
           });
-          if (_this3.store[path]) {
+          if (_this3.subscriptions[path]) {
             _context5.next = 6;
             break;
           }
           return _context5.abrupt("return");
         case 6:
+          if (!_this3.store[path]) {
+            _this3.store[path] = { hash: null, value: void 0, tick: -1 };
+          }
+          tick = _this3._tick;
+          _this3._tick = _this3._tick + 1;
           if (!(_this3.store[path].hash === hash)) {
-            _context5.next = 10;
+            _context5.next = 13;
             break;
           }
-          value = _.patch(_this3.store[path].value, diff);
-          _context5.next = 13;
-          break;
-        case 10: _context5.next = 12;
+          return _context5.abrupt("return", _this3.update({ path: path, value: _.patch(_this3.store[path], diff), tick: tick }));
+        case 13: _context5.next = 15;
           return _this3.pull(path, { bypassCache: true });
-        case 12: value = _context5.sent;
-        case 13:
-          hash = _.hash(value);
-          _this3.store[path] = { value: value, hash: hash };
-          _this3.update(path, value);
-        case 16:
+        case 15: _context5.t0 = _context5.sent;
+          return _context5.abrupt("return", _this3.update({
+            path: path,
+            value: _context5.t0,
+            tick: tick
+          }));
+        case 17:
         case "end": return _context5.stop();
       }
     }, _callee5, this);
@@ -183,6 +187,7 @@ var Uplink = (function () {
       return url.should.be.a.String && guid.should.be.a.String;
     });
     this.http = url;
+    this._tick = 0; // internal ticker to avoid overwriting fresher data
     _.dev(function () {
       return console.warn("nexus-uplink-client", ">>", "connect", { url: url });
     });
@@ -328,16 +333,25 @@ var Uplink = (function () {
     return { subscription: subscription, deletedPath: deletedPath };
   };
 
-  Uplink.prototype.update = function (path, value) {
+  Uplink.prototype.update = function (_ref5) {
     var _this11 = this;
+    var path = _ref5.path;
+    var value = _ref5.value;
+    var tick = _ref5.tick;
     _.dev(function () {
-      return path.should.be.a.String && (value === null || _.isObject(value)).should.be.ok;
+      return path.should.be.a.String && (value === null || _.isObject(value)).should.be.ok && (_this11.store[path] !== void 0).should.be.ok;
     });
-    if (this.subscriptions[path]) {
-      Object.keys(this.subscriptions[path]).forEach(function (key) {
-        return _this11.subscriptions[path][key].update(value);
-      });
+    if (!this.subscriptions[path]) {
+      return;
     }
+    if (this.store[path].tick > tick) {
+      // A fresher version is already available
+      return;
+    }
+    this.store[path] = { value: value, hash: _.hash(value), tick: tick };
+    Object.keys(this.subscriptions[path]).forEach(function (key) {
+      return _this11.subscriptions[path][key].update(value);
+    });
   };
 
   Uplink.prototype._remoteListenTo = function (room) {
@@ -394,6 +408,7 @@ var Uplink = (function () {
 
 _.extend(Uplink.prototype, {
   guid: null,
+  _tick: null,
   handshake: null,
   _handshake: null,
   io: null,

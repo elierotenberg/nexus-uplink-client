@@ -41,19 +41,20 @@ const ioHandlers = _.mapValues({
     // the diff is applied. If not, then the full value
     // is fetched.
     _.dev(() => path.should.be.a.String);
-    if(!this.store[path]) {
+    if(!this.subscriptions[path]) {
       return;
     }
-    let value;
+    if(!this.store[path]) {
+      this.store[path] = { hash: null, value: void 0, tick: -1 };
+    }
+    const tick = this._tick;
+    this._tick = this._tick + 1;
     if(this.store[path].hash === hash) {
-      value = _.patch(this.store[path].value, diff);
+      return this.update({ path, value: _.patch(this.store[path], diff), tick });
     }
     else {
-      value = yield this.pull(path, { bypassCache: true });
+      return this.update({ path, value: yield this.pull(path, { bypassCache: true }), tick });
     }
-    hash = _.hash(value);
-    this.store[path] = { value, hash };
-    this.update(path, value);
   },
 
   *emit({ room, params }) {
@@ -84,6 +85,7 @@ class Uplink {
       guid.should.be.a.String
     );
     this.http = url;
+    this._tick = 0; // internal ticker to avoid overwriting fresher data
     _.dev(() => console.warn('nexus-uplink-client', '>>', 'connect', { url }));
     this.io = io(url);
     this.pid = null;
@@ -196,14 +198,20 @@ class Uplink {
     return { subscription, deletedPath };
   }
 
-  update(path, value) {
+  update({ path, value, tick }) {
     _.dev(() => path.should.be.a.String &&
-      (value === null || _.isObject(value)).should.be.ok
+      (value === null || _.isObject(value)).should.be.ok &&
+      (this.store[path] !== void 0).should.be.ok
     );
-    if(this.subscriptions[path]) {
-      Object.keys(this.subscriptions[path])
-      .forEach((key) => this.subscriptions[path][key].update(value));
+    if(!this.subscriptions[path]) {
+      return;
     }
+    if(this.store[path].tick > tick) { // A fresher version is already available
+      return;
+    }
+    this.store[path] = { value, hash: _.hash(value), tick };
+    Object.keys(this.subscriptions[path])
+    .forEach((key) => this.subscriptions[path][key].update(value));
   }
 
   _remoteListenTo(room) {
@@ -250,6 +258,7 @@ class Uplink {
 
 _.extend(Uplink.prototype, {
   guid: null,
+  _tick: null,
   handshake: null,
   _handshake: null,
   io: null,
