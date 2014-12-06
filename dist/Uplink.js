@@ -92,14 +92,15 @@ var ioHandlers = _.mapValues({
             _context5.next = 10;
             break;
           }
-          _context5.t0 = _.patch(_this3.store[path].value, diff);
+          value = _.patch(_this3.store[path].value, diff);
           _context5.next = 13;
           break;
         case 10: _context5.next = 12;
           return _this3.pull(path, { bypassCache: true });
-        case 12: _context5.t0 = _context5.sent;
-        case 13: value = _context5.t0;
-          _this3.store[path] = { value: value, hash: _.hash(value) };
+        case 12: value = _context5.sent;
+        case 13:
+          hash = _.hash(value);
+          _this3.store[path] = { value: value, hash: hash };
           _this3.update(path, value);
         case 16:
         case "end": return _context5.stop();
