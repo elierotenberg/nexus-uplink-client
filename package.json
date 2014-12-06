@@ -1,6 +1,6 @@
 {
   "name": "nexus-uplink-client",
-  "version": "0.8.12",
+  "version": "0.8.13",
   "description": "",
   "main": "dist/index.js",
   "scripts": {
