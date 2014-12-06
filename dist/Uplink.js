@@ -5,11 +5,6 @@ var _toArray = function (arr) {
   return Array.isArray(arr) ? arr : Array.from(arr);
 };
 
-var _classProps = function (child, staticProps, instanceProps) {
-  if (staticProps) Object.defineProperties(child, staticProps);
-  if (instanceProps) Object.defineProperties(child.prototype, instanceProps);
-};
-
 require("6to5/polyfill");var Promise = (global || window).Promise = require("lodash-next").Promise;var __DEV__ = (process.env.NODE_ENV !== "production");var __PROD__ = !__DEV__;var __BROWSER__ = (typeof window === "object");var __NODE__ = !__BROWSER__;var _ = require("lodash-next");
 
 var io = require("socket.io-client");
@@ -205,229 +200,194 @@ var Uplink = (function () {
     this.bindIOHandlers();
   };
 
-  _classProps(Uplink, null, {
-    destroy: {
-      writable: true,
-      value: function () {
-        var _this6 = this;
-        // Cancel all pending requests/active subscriptions/listeners
-        if (!this.pid) {
-          this.handshake.cancel();
-        }
-        Object.keys(this.subscriptions).forEach(function (path) {
-          return Object.keys(_this6.subscriptions[path]).forEach(function (id) {
-            return _this6.unsubscribeFrom(_this6.subscriptions[path][id]);
-          });
-        });
-        Object.keys(this.listeners).forEach(function (room) {
-          return Object.keys(_this6.listeners[room]).forEach(function (id) {
-            return _this6.unlistenFrom(_this6.listeners[room][id]);
-          });
-        });
-        Object.keys(this.pending).forEach(function (path) {
-          _this6.pending[path].cancel();
-          delete _this6.pending[path];
-        });
-        this.io.close();
-      }
-    },
-    bindIOHandlers: {
-      writable: true,
-      value: function () {
-        var _this7 = this;
-        Object.keys(ioHandlers).forEach(function (event) {
-          return _this7.io.on(event, function (params) {
-            _.dev(function () {
-              return console.warn("nexus-uplink-client", "<<", event, params);
-            });
-            ioHandlers[event].call(_this7, _.prollyparse(params))["catch"](function (e) {
-              return _.dev(function () {
-                return console.error({ event: event, params: params, err: e.toString(), stack: e.stack });
-              });
-            });
-          });
-        });
-      }
-    },
-    push: {
-      writable: true,
-      value: function (event, params) {
-        _.dev(function () {
-          return console.warn("nexus-uplink-client", ">>", event, params);
-        });
-        this.io.emit(event, params);
-        return this;
-      }
-    },
-    pull: {
-      writable: true,
-      value: function (path, opts) {
-        var _this8 = this;
-        if (opts === undefined) opts = {};
-        var bypassCache = opts.bypassCache;
-        _.dev(function () {
-          return path.should.be.a.String;
-        });
-        if (!this.pending[path] || bypassCache) {
-          this.pending[path] = this.fetch(path).cancellable().then(function (value) {
-            // As soon as the result is received, removed from the pending list.
-            delete _this8.pending[path];
-            return value;
-          });
-        }
-        _.dev(function () {
-          return _this8.pending[path].then.should.be.a.Function;
-        });
-        return this.pending[path];
-      }
-    },
-    fetch: {
-      writable: true,
-      value: function (path) {
-        var _this9 = this;
-        return new Promise(function (resolve, reject) {
-          return request({ method: "GET", url: relative(_this9.http, path), json: true }, function (err, res, body) {
-            return err ? reject(err) : resolve(body);
-          });
-        });
-      }
-    },
-    dispatch: {
-      writable: true,
-      value: function (action, params) {
-        var _this10 = this;
-        _.dev(function () {
-          return action.should.be.a.String && params.should.be.an.Object;
-        });
-        return new Promise(function (resolve, reject) {
-          return request({ method: "POST", url: relative(_this10.http, action), json: true, body: _.extend({}, params, { guid: _this10.guid }) }, function (err, res, body) {
-            return err ? reject(err) : resolve(body);
-          });
-        });
-      }
-    },
-    _remoteSubscribeTo: {
-      writable: true,
-      value: function (path) {
-        _.dev(function () {
-          return path.should.be.a.String;
-        });
-        this.store[path] = { value: null, hash: null };
-        this.io.emit("subscribeTo", { path: path });
-      }
-    },
-    _remoteUnsubscribeFrom: {
-      writable: true,
-      value: function (path) {
-        _.dev(function () {
-          return path.should.be.a.String;
-        });
-        this.io.emit("unsubscribeFrom", { path: path });
-        delete this.store[path];
-      }
-    },
-    subscribeTo: {
-      writable: true,
-      value: function (path, handler) {
-        _.dev(function () {
-          return path.should.be.a.String && handler.should.be.a.Function;
-        });
-        var subscription = new Subscription({ path: path, handler: handler });
-        var createdPath = subscription.addTo(this.subscriptions);
-        if (createdPath) {
-          this._remoteSubscribeTo(path);
-        }
-        return { subscription: subscription, createdPath: createdPath };
-      }
-    },
-    unsubscribeFrom: {
-      writable: true,
-      value: function (subscription) {
-        _.dev(function () {
-          return subscription.should.be.an.instanceOf(Subscription);
-        });
-        var deletedPath = subscription.removeFrom(this.subscriptions);
-        if (deletedPath) {
-          this._remoteUnsubscribeFrom(subscription.path);
-          delete this.store[subscription.path];
-        }
-        return { subscription: subscription, deletedPath: deletedPath };
-      }
-    },
-    update: {
-      writable: true,
-      value: function (path, value) {
-        var _this11 = this;
-        _.dev(function () {
-          return path.should.be.a.String && (value === null || _.isObject(value)).should.be.ok;
-        });
-        if (this.subscriptions[path]) {
-          Object.keys(this.subscriptions[path]).forEach(function (key) {
-            return _this11.subscriptions[path][key].update(value);
-          });
-        }
-      }
-    },
-    _remoteListenTo: {
-      writable: true,
-      value: function (room) {
-        _.dev(function () {
-          return room.should.be.a.String;
-        });
-        this.io.emit("listenTo", { room: room });
-      }
-    },
-    _remoteUnlistenFrom: {
-      writable: true,
-      value: function (room) {
-        _.dev(function () {
-          return room.should.be.a.String;
-        });
-        this.io.emit("unlistenFrom", { room: room });
-      }
-    },
-    listenTo: {
-      writable: true,
-      value: function (room, handler) {
-        _.dev(function () {
-          return room.should.be.a.String && handler.should.be.a.Function;
-        });
-        var listener = new Listener({ room: room, handler: handler });
-        var createdRoom = listener.addTo(this.listeners);
-        if (createdRoom) {
-          this._remoteListenTo(room);
-        }
-        return { listener: listener, createdRoom: createdRoom };
-      }
-    },
-    unlistenFrom: {
-      writable: true,
-      value: function (listener) {
-        _.dev(function () {
-          return listener.should.be.an.instanceOf(Listener);
-        });
-        var deletedRoom = listener.removeFrom(this.listeners);
-        if (deletedRoom) {
-          this._remoteUnlistenFrom(listener.room);
-        }
-        return { listener: listener, deletedRoom: deletedRoom };
-      }
-    },
-    emit: {
-      writable: true,
-      value: function (room, params) {
-        var _this12 = this;
-        _.dev(function () {
-          return room.should.be.a.String && params.should.be.an.Object;
-        });
-        if (this.listeners[room]) {
-          Object.keys(this.listeners[room]).forEach(function (key) {
-            return _this12.listeners[room][key].emit(params);
-          });
-        }
-      }
+  Uplink.prototype.destroy = function () {
+    var _this6 = this;
+    // Cancel all pending requests/active subscriptions/listeners
+    if (!this.pid) {
+      this.handshake.cancel();
     }
-  });
+    Object.keys(this.subscriptions).forEach(function (path) {
+      return Object.keys(_this6.subscriptions[path]).forEach(function (id) {
+        return _this6.unsubscribeFrom(_this6.subscriptions[path][id]);
+      });
+    });
+    Object.keys(this.listeners).forEach(function (room) {
+      return Object.keys(_this6.listeners[room]).forEach(function (id) {
+        return _this6.unlistenFrom(_this6.listeners[room][id]);
+      });
+    });
+    Object.keys(this.pending).forEach(function (path) {
+      _this6.pending[path].cancel();
+      delete _this6.pending[path];
+    });
+    this.io.close();
+  };
+
+  Uplink.prototype.bindIOHandlers = function () {
+    var _this7 = this;
+    Object.keys(ioHandlers).forEach(function (event) {
+      return _this7.io.on(event, function (params) {
+        _.dev(function () {
+          return console.warn("nexus-uplink-client", "<<", event, params);
+        });
+        ioHandlers[event].call(_this7, _.prollyparse(params))["catch"](function (e) {
+          return _.dev(function () {
+            return console.error({ event: event, params: params, err: e.toString(), stack: e.stack });
+          });
+        });
+      });
+    });
+  };
+
+  Uplink.prototype.push = function (event, params) {
+    _.dev(function () {
+      return console.warn("nexus-uplink-client", ">>", event, params);
+    });
+    this.io.emit(event, params);
+    return this;
+  };
+
+  Uplink.prototype.pull = function (path, opts) {
+    var _this8 = this;
+    if (opts === undefined) opts = {};
+    var bypassCache = opts.bypassCache;
+    _.dev(function () {
+      return path.should.be.a.String;
+    });
+    if (!this.pending[path] || bypassCache) {
+      this.pending[path] = this.fetch(path).cancellable().then(function (value) {
+        // As soon as the result is received, removed from the pending list.
+        delete _this8.pending[path];
+        return value;
+      });
+    }
+    _.dev(function () {
+      return _this8.pending[path].then.should.be.a.Function;
+    });
+    return this.pending[path];
+  };
+
+  Uplink.prototype.fetch = function (path) {
+    var _this9 = this;
+    return new Promise(function (resolve, reject) {
+      return request({ method: "GET", url: relative(_this9.http, path), json: true }, function (err, res, body) {
+        return err ? reject(err) : resolve(body);
+      });
+    });
+  };
+
+  Uplink.prototype.dispatch = function (action, params) {
+    var _this10 = this;
+    _.dev(function () {
+      return action.should.be.a.String && params.should.be.an.Object;
+    });
+    return new Promise(function (resolve, reject) {
+      return request({ method: "POST", url: relative(_this10.http, action), json: true, body: _.extend({}, params, { guid: _this10.guid }) }, function (err, res, body) {
+        return err ? reject(err) : resolve(body);
+      });
+    });
+  };
+
+  Uplink.prototype._remoteSubscribeTo = function (path) {
+    _.dev(function () {
+      return path.should.be.a.String;
+    });
+    this.store[path] = { value: null, hash: null };
+    this.io.emit("subscribeTo", { path: path });
+  };
+
+  Uplink.prototype._remoteUnsubscribeFrom = function (path) {
+    _.dev(function () {
+      return path.should.be.a.String;
+    });
+    this.io.emit("unsubscribeFrom", { path: path });
+    delete this.store[path];
+  };
+
+  Uplink.prototype.subscribeTo = function (path, handler) {
+    _.dev(function () {
+      return path.should.be.a.String && handler.should.be.a.Function;
+    });
+    var subscription = new Subscription({ path: path, handler: handler });
+    var createdPath = subscription.addTo(this.subscriptions);
+    if (createdPath) {
+      this._remoteSubscribeTo(path);
+    }
+    return { subscription: subscription, createdPath: createdPath };
+  };
+
+  Uplink.prototype.unsubscribeFrom = function (subscription) {
+    _.dev(function () {
+      return subscription.should.be.an.instanceOf(Subscription);
+    });
+    var deletedPath = subscription.removeFrom(this.subscriptions);
+    if (deletedPath) {
+      this._remoteUnsubscribeFrom(subscription.path);
+      delete this.store[subscription.path];
+    }
+    return { subscription: subscription, deletedPath: deletedPath };
+  };
+
+  Uplink.prototype.update = function (path, value) {
+    var _this11 = this;
+    _.dev(function () {
+      return path.should.be.a.String && (value === null || _.isObject(value)).should.be.ok;
+    });
+    if (this.subscriptions[path]) {
+      Object.keys(this.subscriptions[path]).forEach(function (key) {
+        return _this11.subscriptions[path][key].update(value);
+      });
+    }
+  };
+
+  Uplink.prototype._remoteListenTo = function (room) {
+    _.dev(function () {
+      return room.should.be.a.String;
+    });
+    this.io.emit("listenTo", { room: room });
+  };
+
+  Uplink.prototype._remoteUnlistenFrom = function (room) {
+    _.dev(function () {
+      return room.should.be.a.String;
+    });
+    this.io.emit("unlistenFrom", { room: room });
+  };
+
+  Uplink.prototype.listenTo = function (room, handler) {
+    _.dev(function () {
+      return room.should.be.a.String && handler.should.be.a.Function;
+    });
+    var listener = new Listener({ room: room, handler: handler });
+    var createdRoom = listener.addTo(this.listeners);
+    if (createdRoom) {
+      this._remoteListenTo(room);
+    }
+    return { listener: listener, createdRoom: createdRoom };
+  };
+
+  Uplink.prototype.unlistenFrom = function (listener) {
+    _.dev(function () {
+      return listener.should.be.an.instanceOf(Listener);
+    });
+    var deletedRoom = listener.removeFrom(this.listeners);
+    if (deletedRoom) {
+      this._remoteUnlistenFrom(listener.room);
+    }
+    return { listener: listener, deletedRoom: deletedRoom };
+  };
+
+  Uplink.prototype.emit = function (room, params) {
+    var _this12 = this;
+    _.dev(function () {
+      return room.should.be.a.String && params.should.be.an.Object;
+    });
+    if (this.listeners[room]) {
+      Object.keys(this.listeners[room]).forEach(function (key) {
+        return _this12.listeners[room][key].emit(params);
+      });
+    }
+  };
 
   return Uplink;
 })();

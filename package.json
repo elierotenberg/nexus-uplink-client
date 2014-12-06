@@ -20,7 +20,7 @@
   },
   "homepage": "https://github.com/elierotenberg/nexus-uplink-client",
   "devDependencies": {
-    "del": "^1.0.0",
+    "del": "^1.1.0",
     "gulp": "^3.8.10",
     "gulp-insert": "^0.4.0",
     "gulp-jshint": "^1.9.0",
@@ -31,9 +31,9 @@
     "jshint-stylish": "^1.0.0"
   },
   "dependencies": {
-    "6to5": "^1.14.6",
+    "6to5": "^1.14.16",
     "browser-request": "^0.3.3",
-    "lodash-next": "^1.9.0",
+    "lodash-next": "^1.9.2",
     "request": "^2.49.0",
     "socket.io-client": "^1.2.1"
   }
