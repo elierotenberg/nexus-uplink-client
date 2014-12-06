@@ -14,7 +14,7 @@ class Subscription {
       subscriptions[this.path] = {};
     }
     _.dev(() => subscriptions[this.path].should.be.an.Object &&
-      (subscriptions[this.path][this.id] !== void 0).should.be.ok
+      (subscriptions[this.path][this.id] === void 0).should.be.ok
     );
     subscriptions[this.path][this.id] = this;
     return Object.keys(subscriptions[this.path]).length === 1;
