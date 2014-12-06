@@ -116,7 +116,7 @@ class Uplink {
     .forEach((event) => this.io.on(event, (params) => {
       _.dev(() => console.warn('nexus-uplink-client', '<<', event, params));
       ioHandlers[event].call(this, _.prollyparse(params))
-      .catch((e) => _.dev(() => console.error({ event, params, err: e.toString(), stack: e.stack })));
+      .catch((e) => _.dev(() => { throw e; }));
     }));
   }
 

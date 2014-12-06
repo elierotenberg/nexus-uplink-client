@@ -231,7 +231,7 @@ var Uplink = (function () {
         });
         ioHandlers[event].call(_this7, _.prollyparse(params))["catch"](function (e) {
           return _.dev(function () {
-            return console.error({ event: event, params: params, err: e.toString(), stack: e.stack });
+            throw e;
           });
         });
       });
