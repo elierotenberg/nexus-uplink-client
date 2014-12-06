@@ -44,16 +44,9 @@ const ioHandlers = _.mapValues({
     if(!this.store[path]) {
       return;
     }
-    if(this.store[path].hash === hash) {
-      this.store[path].value = _.patch(this.store[path], diff);
-      this.store[path].hash = _.hash(this.store[path].value);
-      this.update(path, this.store[path]);
-    }
-    else {
-      const value = yield this.pull(path, { bypassCache: true });
-      this.store[path] = { value, hash: _.hash(value) };
-      this.update(path, this.store[path]);
-    }
+    const value = this.store[path].hash === hash ? _.patch(this.store[path], diff) : yield this.pull(path, { bypassCache: true });
+    this.store[path] = { value, hash: _.hash(value) };
+    this.update(path, value);
   },
 
   *emit({ room, params }) {

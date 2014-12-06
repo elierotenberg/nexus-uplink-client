@@ -89,20 +89,19 @@ var ioHandlers = _.mapValues({
           return _context5.abrupt("return");
         case 6:
           if (!(_this3.store[path].hash === hash)) {
-            _context5.next = 12;
+            _context5.next = 10;
             break;
           }
-          _this3.store[path].value = _.patch(_this3.store[path], diff);
-          _this3.store[path].hash = _.hash(_this3.store[path].value);
-          _this3.update(path, _this3.store[path]);
-          _context5.next = 17;
+          _context5.t0 = _.patch(_this3.store[path], diff);
+          _context5.next = 13;
           break;
-        case 12: _context5.next = 14;
+        case 10: _context5.next = 12;
           return _this3.pull(path, { bypassCache: true });
-        case 14: value = _context5.sent;
+        case 12: _context5.t0 = _context5.sent;
+        case 13: value = _context5.t0;
           _this3.store[path] = { value: value, hash: _.hash(value) };
-          _this3.update(path, _this3.store[path]);
-        case 17:
+          _this3.update(path, value);
+        case 16:
         case "end": return _context5.stop();
       }
     }, _callee5, this);
