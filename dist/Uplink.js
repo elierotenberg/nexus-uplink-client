@@ -14,6 +14,8 @@ var request = require("request");
 var Listener = require("./Listener");
 var Subscription = require("./Subscription");
 
+var HANDSHAKE_TIMEOUT = 5000;
+
 // These socket.io handlers are actually called like Uplink instance method
 // (using .call). In their body 'this' is therefore an Uplink instance.
 // They are declared here to avoid cluttering the Uplink class definition
@@ -197,7 +199,7 @@ var Uplink = (function () {
     this.shouldReloadOnServerRestart = shouldReloadOnServerRestart;
     this.handshake = new Promise(function (resolve, reject) {
       return _this5._handshake = { resolve: resolve, reject: reject };
-    }).cancellable();
+    }).timeout(HANDSHAKE_TIMEOUT, "Handshake timeout expired.").cancellable();
     this.listeners = {};
     this.subscriptions = {};
     this.store = {};
