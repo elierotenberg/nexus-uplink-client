@@ -1,115 +1,37 @@
 const _ = require('lodash-next');
-
-const io = require('socket.io-client');
 const relative = require('url').resolve;
-const request = require('request');
 
+const Requester = require('./Requester');
+const Connection = require('./Connection');
 const Listener = require('./Listener');
 const Subscription = require('./Subscription');
 
-const HANDSHAKE_TIMEOUT = 5000;
-
-// These socket.io handlers are actually called like Uplink instance method
-// (using .call). In their body 'this' is therefore an Uplink instance.
-// They are declared here to avoid cluttering the Uplink class definition
-// and method naming collisions.
-const ioHandlers = _.mapValues({
-  *connect() {
-    this.push('handshake', { guid: this.guid });
-  },
-
-  *reconnect() {
-    // TODO
-    // Handle reconnections properly.
-  },
-
-  *disconnect() {
-    // TODO
-    // Handle disconnections properly
-  },
-
-  *handshakeAck({ pid }) {
-    if(this.pid !== null && pid !== this.pid && this.shouldReloadOnServerRestart && (__BROWSER__)) {
-      window.location.reload();
-    }
-    this.pid = pid;
-    this._handshake.resolve({ pid });
-  },
-
-  *update({ path, diff, hash }) {
-    // At the uplink level, updates are transmitted
-    // as (diff, hash). If the uplink client has
-    // a cached value with the matching hash, then
-    // the diff is applied. If not, then the full value
-    // is fetched.
-    _.dev(() => path.should.be.a.String);
-    if(!this.subscriptions[path]) {
-      return;
-    }
-    if(!this.store[path]) {
-      this.store[path] = { hash: null, value: void 0, tick: -1 };
-    }
-    const tick = this._tick;
-    this._tick = this._tick + 1;
-    if(this.store[path].hash === hash) {
-      return this.update({ path, value: _.patch(this.store[path], diff), tick });
-    }
-    else {
-      return this.update({ path, value: yield this.pull(path, { bypassCache: true }), tick });
-    }
-  },
-
-  *emit({ room, params }) {
-    _.dev(() => room.should.be.a.String && params.should.be.an.Object);
-    this.emit(room, params);
-  },
-
-  *debug(...args) {
-    console.table(...args);
-  },
-
-  *log(...args) {
-    console.log(...args);
-  },
-
-  *warn(...args) {
-    console.warn(...args);
-  },
-
-  *err(...args) {
-    console.error(...args);
-  },
-}, _.co.wrap);
-
 class Uplink {
-  constructor({ url, guid, shouldReloadOnServerRestart }) {
-    shouldReloadOnServerRestart = (shouldReloadOnServerRestart === void 0) ? true : !!shouldReloadOnServerRestart;
+  constructor({ url, guid, requestTimeout, handshakeTimeout, reconnectInterval, reconnectBackoff, shouldReloadOnServerRestart }) {
+    const _shouldReloadOnServerRestart = (shouldReloadOnServerRestart === void 0) ? true : !!shouldReloadOnServerRestart;
     _.dev(() => url.should.be.a.String &&
       guid.should.be.a.String &&
       shouldReloadOnServerRestart.should.be.a.Boolean
     );
-    this.http = url;
-    this._tick = 0; // internal ticker to avoid overwriting fresher data
-    _.dev(() => console.warn('nexus-uplink-client', '>>', 'connect', { url }));
-    this.io = io(url);
-    this.pid = null;
-    this.guid = guid;
-    this.shouldReloadOnServerRestart = shouldReloadOnServerRestart;
-    this.handshake = new Promise((resolve, reject) => this._handshake = { resolve, reject })
-    .timeout(HANDSHAKE_TIMEOUT, 'Handshake timeout expired.')
-    .cancellable();
-    this.listeners = {};
-    this.subscriptions = {};
-    this.store = {};
-    this.pending = {};
-    this.bindIOHandlers();
+    _.extend(this, {
+      url,
+      guid,
+      _shouldReloadOnServerRestart,
+      _listeners: {},
+      _subscriptions: {},
+      _storeCache: {},
+      _connection: new Connection({ url, guid, handshakeTimeout, reconnectInterval, reconnectBackoff }),
+      _requester: new Requester({ requestTimeout }),
+    });
+    this._connection.events.on('update', ({ path, diff, hash }) => this._handleUpdate({ path, diff, hash }));
+    this._connection.events.on('emit', ({ room, params }) => this._handleEmit({ room, params }));
+    this._connection.events.on('handshakeAck', ({ pid }) => this._handleHanshakeAck({ pid }));
   }
+
+  // Public methods
 
   destroy() {
     // Cancel all pending requests/active subscriptions/listeners
-    if(!this.pid) {
-      this.handshake.cancel();
-    }
     Object.keys(this.subscriptions)
     .forEach((path) => Object.keys(this.subscriptions[path])
       .forEach((id) => this.unsubscribeFrom(this.subscriptions[path][id]))
@@ -118,161 +40,159 @@ class Uplink {
     .forEach((room) => Object.keys(this.listeners[room])
       .forEach((id) => this.unlistenFrom(this.listeners[room][id]))
     );
-    Object.keys(this.pending)
-    .forEach((path) => {
-      this.pending[path].cancel();
-      delete this.pending[path];
-    });
-    this.io.close();
+    this._connection.destroy();
+    this._requester.destroy();
   }
 
-  bindIOHandlers() {
-    Object.keys(ioHandlers)
-    .forEach((event) => this.io.on(event, (params) => {
-      _.dev(() => console.warn('nexus-uplink-client', '<<', event, params));
-      ioHandlers[event].call(this, _.prollyparse(params))
-      .catch((e) => _.dev(() => { throw e; }));
-    }));
-  }
-
-  push(event, params) {
-    _.dev(() => console.warn('nexus-uplink-client', '>>', event, params));
-    this.io.emit(event, params);
-    return this;
-  }
-
-  pull(path, opts = {}) {
-    let { bypassCache } = opts;
+  pull(path) {
     _.dev(() => path.should.be.a.String);
-    if(!this.pending[path] || bypassCache) {
-      this.pending[path] = this.fetch(path).cancellable().then((value) => {
-        // As soon as the result is received, removed from the pending list.
-        delete this.pending[path];
-        return value;
-      });
+    if(this._storeCache[path]) {
+      return Promise.resolve(this._storeCache[path].value);
     }
-    _.dev(() => this.pending[path].then.should.be.a.Function);
-    return this.pending[path];
-  }
-
-  fetch(path) {
-    return new Promise((resolve, reject) =>
-      request({ method: 'GET', url: relative(this.http, path), json: true }, (err, res, body) => err ? reject(err) : resolve(body))
-    );
+    else {
+      return this._refresh(path);
+    }
   }
 
   dispatch(action, params) {
     _.dev(() => action.should.be.a.String &&
       params.should.be.an.Object
     );
-    return new Promise((resolve, reject) =>
-      request({ method: 'POST', url: relative(this.http, action), json: true, body: _.extend({}, params, { guid: this.guid }) }, (err, res, body) => err ? reject(err) : resolve(body))
-    );
-  }
-
-  _remoteSubscribeTo(path) {
-    _.dev(() => path.should.be.a.String);
-    this.store[path] = { value: null, hash: null };
-    this.io.emit('subscribeTo', { path });
-  }
-
-  _remoteUnsubscribeFrom(path) {
-    _.dev(() => path.should.be.a.String);
-    this.io.emit('unsubscribeFrom', { path });
-    delete this.store[path];
+    return this._requester.post(relative(this.url, action), _.extend({}, params, { guid: this.guid }));
   }
 
   subscribeTo(path, handler) {
     _.dev(() => path.should.be.a.String &&
       handler.should.be.a.Function
     );
-    let subscription = new Subscription({ path, handler });
-    let createdPath = subscription.addTo(this.subscriptions);
+    const subscription = new Subscription({ path, handler });
+    const createdPath = subscription.addTo(this._subscriptions);
     if(createdPath) {
-      this._remoteSubscribeTo(path);
+      this._connection.subscribeTo(path);
     }
     return { subscription, createdPath };
   }
 
   unsubscribeFrom(subscription) {
     _.dev(() => subscription.should.be.an.instanceOf(Subscription));
-    let deletedPath = subscription.removeFrom(this.subscriptions);
+    const path = { subscription };
+    const deletedPath = subscription.removeFrom(this._subscriptions);
+    this._connection.unsubscribeFrom(path);
     if(deletedPath) {
-      this._remoteUnsubscribeFrom(subscription.path);
-      delete this.store[subscription.path];
+      this._connection.abort(relative(this.url, path));
+      delete this._storeCache[path];
+      this._connection.unsubscribeFrom(path);
     }
     return { subscription, deletedPath };
-  }
-
-  update({ path, value, tick }) {
-    _.dev(() => path.should.be.a.String &&
-      (value === null || _.isObject(value)).should.be.ok &&
-      (this.store[path] !== void 0).should.be.ok
-    );
-    if(!this.subscriptions[path]) {
-      return;
-    }
-    if(this.store[path].tick > tick) { // A fresher version is already available
-      return;
-    }
-    this.store[path] = { value, hash: _.hash(value), tick };
-    Object.keys(this.subscriptions[path])
-    .forEach((key) => this.subscriptions[path][key].update(value));
-  }
-
-  _remoteListenTo(room) {
-    _.dev(() => room.should.be.a.String);
-    this.io.emit('listenTo', { room });
-  }
-
-  _remoteUnlistenFrom(room) {
-    _.dev(() => room.should.be.a.String);
-    this.io.emit('unlistenFrom', { room });
   }
 
   listenTo(room, handler) {
     _.dev(() => room.should.be.a.String &&
       handler.should.be.a.Function
     );
-    let listener = new Listener({ room, handler });
-    let createdRoom = listener.addTo(this.listeners);
+    const listener = new Listener({ room, handler });
+    const createdRoom = listener.addTo(this._listeners);
     if(createdRoom) {
-      this._remoteListenTo(room);
+      this._connection.listenTo(room);
     }
     return { listener, createdRoom };
   }
 
   unlistenFrom(listener) {
     _.dev(() => listener.should.be.an.instanceOf(Listener));
-    let deletedRoom = listener.removeFrom(this.listeners);
+    const { room } = listener;
+    const deletedRoom = listener.removeFrom(this._listeners);
     if(deletedRoom) {
-      this._remoteUnlistenFrom(listener.room);
+      this._connection.unlistenFrom(room);
     }
     return { listener, deletedRoom };
   }
 
-  emit(room, params) {
-    _.dev(() => room.should.be.a.String &&
-      params.should.be.an.Object
+  // Private methods
+
+  _handleUpdate({ path, diff, hash }) {
+    if(this._subscriptions[path] === void 0) {
+      _.dev(() => console.warn('nexus-uplink-client', `update for path ${path} without matching subscription`));
+      return;
+    }
+    _.dev(() => (this._storeCache[path] !== void 0).should.be.ok);
+    if(this._storeCache[path].hash === hash) {
+      return this._set(path, _.patch(this._storeCache[path].value, diff), Date.now());
+    }
+    return this._refresh(path);
+  }
+
+  _handleEmit({ room, params }) {
+    if(this.listeners[room] === void 0) {
+      _.dev(() => console.warn('nexus-uplink-client', `emit for room ${room} without matching listener`));
+      return;
+    }
+    return this._propagateEmit(room, params);
+  }
+
+  _handleHanshakeAck({ pid }) {
+    _.dev(() => pid.should.be.a.String);
+    if(this.pid === null) {
+      this.pid = pid;
+    }
+    else if(this.pid !== pid) {
+      _.dev(() => console.warn('nexus-uplink-client', 'handshakeAck with new pid', pid, this.pid));
+      if(this._shouldReloadOnServerRestart && __BROWSER__) {
+        window.location.reload(true);
+      }
+    }
+  }
+
+  _refresh(path) {
+    _.dev(() => path.should.be.a.String);
+    const tick = Date.now();
+    return this._requester.get(relative(this.url, path))
+    .then((value) => this._set(path, value, tick));
+  }
+
+  _set(path, value, tick) {
+    _.dev(() => path.should.be.a.String &&
+      (value === null || _.isObject(value)).should.be.ok &&
+      tick.should.be.a.Number.and.be.above(0)
     );
-    if(this.listeners[room]) {
-      Object.keys(this.listeners[room])
-      .forEach((key) => this.listeners[room][key].emit(params));
+    // Only update if there was no previous version or an older version
+    if(this._storeCache[path] === void 0 || this._storeCache[path].tick < tick) {
+      this._storeCache[path] = { value, hash: _.hash(value), tick };
+      this._propagateUpdate(path, value);
+    }
+    return this._storeCache[path].value;
+  }
+
+  _propagateUpdate(path, value) {
+    _.dev(() => path.should.be.a.String &&
+      (value === null || _.isObject(value)).should.be.ok
+    );
+    if(this._subscriptions[path] !== void 0) {
+      Object.keys(this._subscriptions[path])
+      .forEach((k) => this._subscriptions[path][k].update(value));
+    }
+  }
+
+  _propagateEmit(room, params) {
+    _.dev(() => room.should.be.a.String &&
+      (params === null) || _.isObject(params).should.be.ok
+    );
+    if(this._listeners[room]) {
+      Object.keys(this._listeners[room])
+      .forEach((k) => this._listeners[room][k].emit(params));
     }
   }
 }
 
 _.extend(Uplink.prototype, {
+  url: null,
   guid: null,
-  _tick: null,
-  handshake: null,
-  _handshake: null,
-  io: null,
   pid: null,
-  listeners: null,
-  shouldReloadOnServerRestart: null,
-  subscriptions: null,
-  store: null,
+  _subscriptions: null,
+  _storeCache: null,
+  _listeners: null,
+  _connection: null,
+  _requester: null,
 });
 
 module.exports = Uplink;
