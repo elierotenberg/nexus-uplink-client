@@ -185,8 +185,9 @@ var Uplink = (function () {
     var url = _ref4.url;
     var guid = _ref4.guid;
     var shouldReloadOnServerRestart = _ref4.shouldReloadOnServerRestart;
+    shouldReloadOnServerRestart = (shouldReloadOnServerRestart === void 0) ? true : !!shouldReloadOnServerRestart;
     _.dev(function () {
-      return url.should.be.a.String && guid.should.be.a.String;
+      return url.should.be.a.String && guid.should.be.a.String && shouldReloadOnServerRestart.should.be.a.Boolean;
     });
     this.http = url;
     this._tick = 0; // internal ticker to avoid overwriting fresher data
