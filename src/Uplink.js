@@ -83,8 +83,10 @@ const ioHandlers = _.mapValues({
 
 class Uplink {
   constructor({ url, guid, shouldReloadOnServerRestart }) {
+    shouldReloadOnServerRestart = (shouldReloadOnServerRestart === void 0) ? true : !!shouldReloadOnServerRestart;
     _.dev(() => url.should.be.a.String &&
-      guid.should.be.a.String
+      guid.should.be.a.String &&
+      shouldReloadOnServerRestart.should.be.a.Boolean
     );
     this.http = url;
     this._tick = 0; // internal ticker to avoid overwriting fresher data
