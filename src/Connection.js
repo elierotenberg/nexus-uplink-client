@@ -85,12 +85,17 @@ class Connection {
   }
 
   connect() {
+    _.dev(() => console.warn('nexus-uplink-client', 'connect'));
     _.dev(() => (this.io === null).should.be.ok &&
       this.isConnected.should.not.be.ok &&
       (this._connectionTimeout !== null).should.be.ok
     );
     this._connectionTimeout = null;
     this.io = createEngineIOClient(this.url);
+    this.io.on('open', () => this.handleIOOpen());
+    this.io.on('close', () => this.handleIOClose());
+    this.io.on('error', (err) => this.handleIOError(err));
+    this.io.on('message', (json) => this.handleIOMessage(json));
   }
 
   handleIOOpen() {
@@ -103,6 +108,7 @@ class Connection {
     _.dev(() => console.warn('nexus-uplink-client', 'close'));
     if(!this.isDestroyed) {
       this._isConnected = false;
+      this.io.removeAllListeners();
       this.io = null;
       this.reconnect();
     }
