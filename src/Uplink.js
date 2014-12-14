@@ -11,7 +11,7 @@ class Uplink {
     const _shouldReloadOnServerRestart = (shouldReloadOnServerRestart === void 0) ? true : !!shouldReloadOnServerRestart;
     _.dev(() => url.should.be.a.String &&
       guid.should.be.a.String &&
-      shouldReloadOnServerRestart.should.be.a.Boolean
+      _shouldReloadOnServerRestart.should.be.a.Boolean
     );
     _.extend(this, {
       url,

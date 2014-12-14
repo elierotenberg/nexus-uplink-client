@@ -20,7 +20,7 @@ var Uplink = (function () {
     var shouldReloadOnServerRestart = _ref.shouldReloadOnServerRestart;
     var _shouldReloadOnServerRestart = (shouldReloadOnServerRestart === void 0) ? true : !!shouldReloadOnServerRestart;
     _.dev(function () {
-      return url.should.be.a.String && guid.should.be.a.String && shouldReloadOnServerRestart.should.be.a.Boolean;
+      return url.should.be.a.String && guid.should.be.a.String && _shouldReloadOnServerRestart.should.be.a.Boolean;
     });
     _.extend(this, {
       url: url,
