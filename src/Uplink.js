@@ -32,14 +32,19 @@ class Uplink {
 
   destroy() {
     // Cancel all pending requests/active subscriptions/listeners
-    Object.keys(this.subscriptions)
-    .forEach((path) => Object.keys(this.subscriptions[path])
-      .forEach((id) => this.unsubscribeFrom(this.subscriptions[path][id]))
+    Object.keys(this._subscriptions)
+    .forEach((path) => Object.keys(this._subscriptions[path])
+      .forEach((id) => this.unsubscribeFrom(this._subscriptions[path][id]))
     );
-    Object.keys(this.listeners)
-    .forEach((room) => Object.keys(this.listeners[room])
-      .forEach((id) => this.unlistenFrom(this.listeners[room][id]))
+    this._subscriptions = null;
+    Object.keys(this._listeners)
+    .forEach((room) => Object.keys(this._listeners[room])
+      .forEach((id) => this.unlistenFrom(this._listeners[room][id]))
     );
+    this._listeners = null;
+    Object.keys(this._storeCache)
+    .forEach((path) => delete this._storeCache[path]);
+    this._storeCache = null;
     this._connection.destroy();
     this._requester.destroy();
   }
