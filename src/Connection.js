@@ -78,6 +78,7 @@ class Connection {
   }
 
   reconnect() {
+    _.dev(() => console.warn('nexus-uplink-client', 'reconnect', this._connectionAttempts));
     const delay = this._connectionAttempts === 0 ? 0 : this.reconnectInterval * Math.pow(this.reconnectBackoff, this._connectionAttempts);
     this._connectionAttempts = this._connectionAttempts + 1;
     this._connectionTimeout = setTimeout(() => this.connect(), delay);
@@ -113,12 +114,12 @@ class Connection {
   }
 
   handleIOMessage(json) {
+    _.dev(() => console.warn('nexus-uplink-client', '<<', json));
     const { event, params } = JSON.parse(json);
     _.dev(() => (event !== void 0).should.be.ok && (params !== void 0).should.be.ok &&
       event.should.be.a.String &&
       (params === null || _.isObject(params)).should.be.ok
     );
-    _.dev(() => console.warn('nexus-uplink-client', '<<', event, params));
     if(event === 'handshakeAck') {
       return this.handleMessageHandshakeAck(params);
     }
@@ -191,6 +192,7 @@ class Connection {
   }
 
   remoteSend(event, params) {
+    _.dev(() => console.warn('nexus-uplink-client', '>>', event, params));
     _.dev(() => (this.io !== null).should.be.ok &&
       event.should.be.a.String &&
       (params === null || _.isObject(params)).should.be.ok
