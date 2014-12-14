@@ -23,9 +23,18 @@ class Connection {
       reconnectInterval.should.be.a.Number.and.not.be.below(0) &&
       reconnectBackoff.should.be.a.Number.and.not.be.below(1)
     );
-    _.extend(this, { url, guid, handshakeTimeout, reconnectInterval, reconnectBackoff });
-    this._isDestroyed = false;
-    this.events = new EventEmitter();
+    _.extend(this, {
+      url,
+      guid,
+      handshakeTimeout,
+      reconnectInterval,
+      reconnectBackoff,
+      _isDestroyed: false,
+      _isConnected: false,
+      events: new EventEmitter(),
+      subscribedPaths: {},
+      listenedRooms: {},
+    });
 
     this.resetConnectionAttempts();
     this.reconnect();
@@ -280,6 +289,7 @@ _.extend(Connection.prototype, {
   handshakeTimeout: null,
   reconnectInterval: null,
   reconnectBackoff: null,
+  events: null,
   subscribedPaths: null,
   listenedRooms: null,
   _connectionTimeout: null,
