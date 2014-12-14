@@ -86,6 +86,9 @@ var Connection = (function () {
 
   Connection.prototype.reconnect = function () {
     var _this2 = this;
+    _.dev(function () {
+      return console.warn("nexus-uplink-client", "reconnect", _this2._connectionAttempts);
+    });
     var delay = this._connectionAttempts === 0 ? 0 : this.reconnectInterval * Math.pow(this.reconnectBackoff, this._connectionAttempts);
     this._connectionAttempts = this._connectionAttempts + 1;
     this._connectionTimeout = setTimeout(function () {
@@ -96,10 +99,25 @@ var Connection = (function () {
   Connection.prototype.connect = function () {
     var _this3 = this;
     _.dev(function () {
+      return console.warn("nexus-uplink-client", "connect");
+    });
+    _.dev(function () {
       return (_this3.io === null).should.be.ok && _this3.isConnected.should.not.be.ok && (_this3._connectionTimeout !== null).should.be.ok;
     });
     this._connectionTimeout = null;
     this.io = createEngineIOClient(this.url);
+    this.io.on("open", function () {
+      return _this3.handleIOOpen();
+    });
+    this.io.on("close", function () {
+      return _this3.handleIOClose();
+    });
+    this.io.on("error", function (err) {
+      return _this3.handleIOError(err);
+    });
+    this.io.on("message", function (json) {
+      return _this3.handleIOMessage(json);
+    });
   };
 
   Connection.prototype.handleIOOpen = function () {
@@ -119,6 +137,7 @@ var Connection = (function () {
     });
     if (!this.isDestroyed) {
       this._isConnected = false;
+      this.io.removeAllListeners();
       this.io = null;
       this.reconnect();
     }
@@ -132,15 +151,15 @@ var Connection = (function () {
   };
 
   Connection.prototype.handleIOMessage = function (json) {
+    _.dev(function () {
+      return console.warn("nexus-uplink-client", "<<", json);
+    });
     var _ref2 = JSON.parse(json);
 
     var event = _ref2.event;
     var params = _ref2.params;
     _.dev(function () {
       return (event !== void 0).should.be.ok && (params !== void 0).should.be.ok && event.should.be.a.String && (params === null || _.isObject(params)).should.be.ok;
-    });
-    _.dev(function () {
-      return console.warn("nexus-uplink-client", "<<", event, params);
     });
     if (event === "handshakeAck") {
       return this.handleMessageHandshakeAck(params);
@@ -234,6 +253,9 @@ var Connection = (function () {
 
   Connection.prototype.remoteSend = function (event, params) {
     var _this6 = this;
+    _.dev(function () {
+      return console.warn("nexus-uplink-client", ">>", event, params);
+    });
     _.dev(function () {
       return (_this6.io !== null).should.be.ok && event.should.be.a.String && (params === null || _.isObject(params)).should.be.ok;
     });
