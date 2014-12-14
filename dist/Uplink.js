@@ -51,16 +51,22 @@ var Uplink = (function () {
   Uplink.prototype.destroy = function () {
     var _this2 = this;
     // Cancel all pending requests/active subscriptions/listeners
-    Object.keys(this.subscriptions).forEach(function (path) {
-      return Object.keys(_this2.subscriptions[path]).forEach(function (id) {
-        return _this2.unsubscribeFrom(_this2.subscriptions[path][id]);
+    Object.keys(this._subscriptions).forEach(function (path) {
+      return Object.keys(_this2._subscriptions[path]).forEach(function (id) {
+        return _this2.unsubscribeFrom(_this2._subscriptions[path][id]);
       });
     });
-    Object.keys(this.listeners).forEach(function (room) {
-      return Object.keys(_this2.listeners[room]).forEach(function (id) {
-        return _this2.unlistenFrom(_this2.listeners[room][id]);
+    this._subscriptions = null;
+    Object.keys(this._listeners).forEach(function (room) {
+      return Object.keys(_this2._listeners[room]).forEach(function (id) {
+        return _this2.unlistenFrom(_this2._listeners[room][id]);
       });
     });
+    this._listeners = null;
+    Object.keys(this._storeCache).forEach(function (path) {
+      return delete _this2._storeCache[path];
+    });
+    this._storeCache = null;
     this._connection.destroy();
     this._requester.destroy();
   };
