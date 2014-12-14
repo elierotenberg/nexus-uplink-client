@@ -120,8 +120,7 @@ class Uplink {
       _.dev(() => console.warn('nexus-uplink-client', `update for path ${path} without matching subscription`));
       return;
     }
-    _.dev(() => (this._storeCache[path] !== void 0).should.be.ok);
-    if(this._storeCache[path].hash === hash) {
+    if(this._storeCache[path] !== void 0 && this._storeCache[path].hash === hash) {
       return this._set(path, _.patch(this._storeCache[path].value, diff), Date.now());
     }
     return this._refresh(path);

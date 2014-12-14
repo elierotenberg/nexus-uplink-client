@@ -141,7 +141,6 @@ var Uplink = (function () {
   };
 
   Uplink.prototype._handleUpdate = function (_ref5) {
-    var _this3 = this;
     var path = _ref5.path;
     var diff = _ref5.diff;
     var hash = _ref5.hash;
@@ -151,10 +150,7 @@ var Uplink = (function () {
       });
       return;
     }
-    _.dev(function () {
-      return (_this3._storeCache[path] !== void 0).should.be.ok;
-    });
-    if (this._storeCache[path].hash === hash) {
+    if (this._storeCache[path] !== void 0 && this._storeCache[path].hash === hash) {
       return this._set(path, _.patch(this._storeCache[path].value, diff), Date.now());
     }
     return this._refresh(path);
@@ -173,7 +169,7 @@ var Uplink = (function () {
   };
 
   Uplink.prototype._handleHanshakeAck = function (_ref7) {
-    var _this4 = this;
+    var _this3 = this;
     var pid = _ref7.pid;
     _.dev(function () {
       return pid.should.be.a.String;
@@ -182,7 +178,7 @@ var Uplink = (function () {
       this.pid = pid;
     } else if (this.pid !== pid) {
       _.dev(function () {
-        return console.warn("nexus-uplink-client", "handshakeAck with new pid", pid, _this4.pid);
+        return console.warn("nexus-uplink-client", "handshakeAck with new pid", pid, _this3.pid);
       });
       if (this._shouldReloadOnServerRestart && __BROWSER__) {
         window.location.reload(true);
@@ -191,13 +187,13 @@ var Uplink = (function () {
   };
 
   Uplink.prototype._refresh = function (path) {
-    var _this5 = this;
+    var _this4 = this;
     _.dev(function () {
       return path.should.be.a.String;
     });
     var tick = Date.now();
     return this._requester.get(relative(this.url, path)).then(function (value) {
-      return _this5._set(path, value, tick);
+      return _this4._set(path, value, tick);
     });
   };
 
@@ -214,25 +210,25 @@ var Uplink = (function () {
   };
 
   Uplink.prototype._propagateUpdate = function (path, value) {
-    var _this6 = this;
+    var _this5 = this;
     _.dev(function () {
       return path.should.be.a.String && (value === null || _.isObject(value)).should.be.ok;
     });
     if (this._subscriptions[path] !== void 0) {
       Object.keys(this._subscriptions[path]).forEach(function (k) {
-        return _this6._subscriptions[path][k].update(value);
+        return _this5._subscriptions[path][k].update(value);
       });
     }
   };
 
   Uplink.prototype._propagateEmit = function (room, params) {
-    var _this7 = this;
+    var _this6 = this;
     _.dev(function () {
       return room.should.be.a.String && (params === null) || _.isObject(params).should.be.ok;
     });
     if (this._listeners[room]) {
       Object.keys(this._listeners[room]).forEach(function (k) {
-        return _this7._listeners[room][k].emit(params);
+        return _this6._listeners[room][k].emit(params);
       });
     }
   };
