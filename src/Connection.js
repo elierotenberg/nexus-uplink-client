@@ -1,5 +1,5 @@
 const _ = require('lodash-next');
-const createEngineIOClient = require('socket.io-client');
+const createEngineIOClient = require('engine.io-client');
 const EventEmitter = require('events').EventEmitter;
 
 const DEFAULT_HANDSHAKE_TIMEOUT = 5000;
