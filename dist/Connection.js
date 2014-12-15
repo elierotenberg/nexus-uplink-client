@@ -106,7 +106,7 @@ var Connection = (function () {
       return console.warn("nexus-uplink-client", "connect");
     });
     _.dev(function () {
-      return (_this3.io === null).should.be.ok && _this3.isConnected.should.not.be.ok && (_this3._connectionTimeout !== null).should.be.ok;
+      return (_this3.io === null).should.be.ok && _this3.isConnected.should.not.be.ok && (_this3._connectionAttemps === 1 || _this3._connectionTimeout !== null).should.be.ok;
     });
     this._connectionTimeout = null;
     this.io = createEngineIOClient(this.url);

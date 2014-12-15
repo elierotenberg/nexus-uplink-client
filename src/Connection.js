@@ -93,7 +93,7 @@ class Connection {
     _.dev(() => console.warn('nexus-uplink-client', 'connect'));
     _.dev(() => (this.io === null).should.be.ok &&
       this.isConnected.should.not.be.ok &&
-      (this._connectionTimeout !== null).should.be.ok
+      (this._connectionAttemps === 1 || this._connectionTimeout !== null).should.be.ok
     );
     this._connectionTimeout = null;
     this.io = createEngineIOClient(this.url);
