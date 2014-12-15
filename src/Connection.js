@@ -46,10 +46,7 @@ class Connection {
     this._isDestroyed = true;
     if(this._io !== null) {
       this._io.close();
-      this._io = null;
     }
-    this.events.off();
-    this.events = null;
     if(this._connectionTimeout !== null) {
       clearTimeout(this._connectionTimeout);
       this._connectionTimeout = null;
