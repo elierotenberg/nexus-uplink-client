@@ -91,9 +91,13 @@ var Connection = (function () {
     });
     var delay = this._connectionAttempts === 0 ? 0 : this.reconnectInterval * Math.pow(this.reconnectBackoff, this._connectionAttempts);
     this._connectionAttempts = this._connectionAttempts + 1;
-    this._connectionTimeout = setTimeout(function () {
-      return _this2.connect();
-    }, delay);
+    if (delay === 0) {
+      return this.connect();
+    } else {
+      this._connectionTimeout = setTimeout(function () {
+        return _this2.connect();
+      }, delay);
+    }
   };
 
   Connection.prototype.connect = function () {
