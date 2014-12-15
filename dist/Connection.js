@@ -84,7 +84,7 @@ var Connection = (function () {
 
   Connection.prototype.reconnect = function () {
     var _this2 = this;
-    var delay = this._connectionAttempts === 0 ? 0 : this.reconnectInterval * Math.pow(this.reconnectBackoff, this._connectionAttempts);
+    var delay = this._connectionAttempts === 0 ? 0 : this.reconnectInterval * Math.pow(this.reconnectBackoff, (this._connectionAttempts - 1));
     _.dev(function () {
       return console.warn("nexus-uplink-client", "reconnect", { connectionAttempt: _this2._connectionAttempts, delay: delay });
     });
@@ -143,9 +143,13 @@ var Connection = (function () {
 
   Connection.prototype.handleIOError = function (err) {
     _.dev(function () {
-      return console.warn("nexus-uplink-client", "error");
+      return console.warn("nexus-uplink-client", "error", err);
     });
-    throw err;
+    if (!this.isConnected && !this.isDestroyed) {
+      this._io.off("open").off("close").off("error").off("message");
+      this._io = null;
+      this.reconnect();
+    }
   };
 
   Connection.prototype.handleIOMessage = function (json) {
