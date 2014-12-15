@@ -86,10 +86,10 @@ var Connection = (function () {
 
   Connection.prototype.reconnect = function () {
     var _this2 = this;
-    _.dev(function () {
-      return console.warn("nexus-uplink-client", "reconnect", _this2._connectionAttempts);
-    });
     var delay = this._connectionAttempts === 0 ? 0 : this.reconnectInterval * Math.pow(this.reconnectBackoff, this._connectionAttempts);
+    _.dev(function () {
+      return console.warn("nexus-uplink-client", "reconnect", { connectionAttempt: _this2._connectionAttempts, delay: delay });
+    });
     this._connectionAttempts = this._connectionAttempts + 1;
     if (delay === 0) {
       return this.connect();

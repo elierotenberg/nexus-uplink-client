@@ -78,8 +78,8 @@ class Connection {
   }
 
   reconnect() {
-    _.dev(() => console.warn('nexus-uplink-client', 'reconnect', this._connectionAttempts));
     const delay = this._connectionAttempts === 0 ? 0 : this.reconnectInterval * Math.pow(this.reconnectBackoff, this._connectionAttempts);
+    _.dev(() => console.warn('nexus-uplink-client', 'reconnect', { connectionAttempt: this._connectionAttempts, delay }));
     this._connectionAttempts = this._connectionAttempts + 1;
     if(delay === 0) {
       return this.connect();
