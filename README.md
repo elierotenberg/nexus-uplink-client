@@ -1,19 +1,67 @@
-Nexus Uplink Client
-===================
+Nexus Uplink Client (Isomorphic)
+================================
 
-Nexus Uplink is an extension of REST semantics to enable real-time update push notifications from a server to the subscribing clients.
-It relies on simple HTTP request/responses and a secondary server-to-client push channel (implemented using the socket.io protocol).
+Nexus Uplink is an dead-simple, lightweight protocol on top of which Flux over the Wire can be implemented.
 
-Inspired by the Flux data-flow concepts of Facebook, data flows only one way, avoiding many of the pitfalls of asynchronous data management.
+[On the client side](https://github.com/elierotenberg/nexus-uplink-client), a Nexus Uplink Client can react to stores updates, and dispatch actions.
+[On the server side](https://github.com/elierotenberg/nexus-uplink-simple-server), a Nexus Uplink Server can react to actions dispatchs, and update stores.
 
-From the clients perspective, Uplink exposes an abstract store with subscribing (read-only), and an abstract action dispatcher (write-only).
-From the servers perspective, Uplink exposes an abstract store with publishing (write-only), and an abstract action handler (read-only).
+Briefly:
+- actions are transported via POST requests (url pathname is the action identifier, JSON-encoded body is the payload)
+- updates are transported via Websocket (or Engine.IO fallback) (as diff objects)
 
-Typical data flow:
+This package is an isomorphic (which means it can run on either Node.js or in the browser via browserify/webpack) implementation  of the Nexus Uplink client-side protocol.
+Also see the [simple server implementation](https://github.com/elierotenberg/nexus-uplink-simple-server) of the Nexus Uplink server-side protocol.
 
-user clicks a button -> dispatch 'do something' -[ action packet is sent over the wire ]-> handle 'do something'
--> mutate store -> publish updates to subscribers clients -[ update packet is sent over the wire ]-> update subscribers objects
+Example
+=======
 
-The client in this repo is isomorphic, ie. it can be require()-d in either a browser or in node and work with the same API.
-To implement the HTTP requests, it relies on `browser-request` in the browser and `request` on node.
-To implement the WebSocket client, it relies on `socket.io-client` in both the browser and node.
+On the server:
+
+```js
+var server = new UplinkSimpleServer({
+  pid: _.guid('pid'),
+  // stores, rooms and actions are url patterns whitelists
+  stores: ['/ping'],
+  rooms: [],
+  actions: ['/ping'],
+  // pass an express or express-like app
+  app: express().use(cors())
+});
+
+var pingCounter = 0;
+
+// setup action handlers
+server.actions.on('/ping', function(payload) {
+  // guid is a cryptosecure unique user id, automatically maintained
+  var guid = payload.guid;
+  var remoteDate = payload.localDate;
+  var localDate = Date.now();
+  console.log('client ' + guid + ' pinged.');
+  console.log('latency is ' + (localDate - remoteDate) + '.');
+  pingCounter++;
+  server.update({ path: '/ping', value: { counter: pingCounter }});
+});
+
+```
+
+On the client:
+
+```js
+var client = new Uplink({ url: 'http://localhost' });
+
+// subscribe to remote updates
+client.subscribeTo('/ping', function(ping) {
+  console.log('ping updated', ping.counter);
+});
+
+// fire-and-forget dispatch actions
+setInterval(function() {
+  client.dispatch('/ping', { localDate: Date.now() });
+}, 1000);
+```
+
+Installation
+============
+
+`npm install nexus-uplink-simple-server --save`
