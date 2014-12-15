@@ -48,7 +48,7 @@ class Connection {
       this._io.close();
       this._io = null;
     }
-    this.events.removeAllListeners();
+    this.events.off();
     this.events = null;
     if(this._connectionTimeout !== null) {
       clearTimeout(this._connectionTimeout);
@@ -98,10 +98,10 @@ class Connection {
     );
     this._connectionTimeout = null;
     this._io = createEngineIOClient(this.url)
-    .addListener('open', () => this.handleIOOpen())
-    .addListener('close', () => this.handleIOClose())
-    .addListener('error', (err) => this.handleIOError(err))
-    .addListener('message', (json) => this.handleIOMessage(json));
+    .on('open', () => this.handleIOOpen())
+    .on('close', () => this.handleIOClose())
+    .on('error', (err) => this.handleIOError(err))
+    .on('message', (json) => this.handleIOMessage(json));
   }
 
   handleIOOpen() {
@@ -115,10 +115,10 @@ class Connection {
     if(!this.isDestroyed) {
       this._isConnected = false;
       this._io
-      .removeAllListeners('open')
-      .removeAllListeners('close')
-      .removeAllListeners('error')
-      .removeAllListeners('message');
+      .off('open')
+      .off('close')
+      .off('error')
+      .off('message');
       this._io = null;
       this.reconnect();
     }

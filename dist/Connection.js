@@ -61,7 +61,7 @@ var Connection = (function () {
       this._io.close();
       this._io = null;
     }
-    this.events.removeAllListeners();
+    this.events.off();
     this.events = null;
     if (this._connectionTimeout !== null) {
       clearTimeout(this._connectionTimeout);
@@ -110,13 +110,13 @@ var Connection = (function () {
       return (_this3._io === null).should.be.ok && _this3.isConnected.should.not.be.ok && (_this3._connectionAttempts === 1 || _this3._connectionTimeout !== null).should.be.ok;
     });
     this._connectionTimeout = null;
-    this._io = createEngineIOClient(this.url).addListener("open", function () {
+    this._io = createEngineIOClient(this.url).on("open", function () {
       return _this3.handleIOOpen();
-    }).addListener("close", function () {
+    }).on("close", function () {
       return _this3.handleIOClose();
-    }).addListener("error", function (err) {
+    }).on("error", function (err) {
       return _this3.handleIOError(err);
-    }).addListener("message", function (json) {
+    }).on("message", function (json) {
       return _this3.handleIOMessage(json);
     });
   };
@@ -138,7 +138,7 @@ var Connection = (function () {
     });
     if (!this.isDestroyed) {
       this._isConnected = false;
-      this._io.removeAllListeners("open").removeAllListeners("close").removeAllListeners("error").removeAllListeners("message");
+      this._io.off("open").off("close").off("error").off("message");
       this._io = null;
       this.reconnect();
     }
