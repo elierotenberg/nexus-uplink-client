@@ -19,6 +19,7 @@ var Uplink = (function () {
     var reconnectBackoff = _ref.reconnectBackoff;
     var shouldReloadOnServerRestart = _ref.shouldReloadOnServerRestart;
     var _shouldReloadOnServerRestart = (shouldReloadOnServerRestart === void 0) ? true : !!shouldReloadOnServerRestart;
+    guid = (guid === void 0) ? _.guid() : guid;
     _.dev(function () {
       return url.should.be.a.String && guid.should.be.a.String && _shouldReloadOnServerRestart.should.be.a.Boolean;
     });

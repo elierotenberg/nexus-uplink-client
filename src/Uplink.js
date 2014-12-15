@@ -9,6 +9,7 @@ const Subscription = require('./Subscription');
 class Uplink {
   constructor({ url, guid, requestTimeout, handshakeTimeout, reconnectInterval, reconnectBackoff, shouldReloadOnServerRestart }) {
     const _shouldReloadOnServerRestart = (shouldReloadOnServerRestart === void 0) ? true : !!shouldReloadOnServerRestart;
+    guid = (guid === void 0) ? _.guid() : guid;
     _.dev(() => url.should.be.a.String &&
       guid.should.be.a.String &&
       _shouldReloadOnServerRestart.should.be.a.Boolean
