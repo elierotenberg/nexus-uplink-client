@@ -44,7 +44,8 @@ var Connection = (function () {
       _isConnected: false,
       events: new EventEmitter(),
       subscribedPaths: {},
-      listenedRooms: {} });
+      listenedRooms: {},
+      _io: null });
 
     this.resetConnectionAttempts();
     this.reconnect();
@@ -56,9 +57,9 @@ var Connection = (function () {
       return _this.isDestroyed.should.not.be.ok;
     });
     this._isDestroyed = true;
-    if (this.io !== null) {
-      this.io.close();
-      this.io = null;
+    if (this._io !== null) {
+      this._io.close();
+      this._io = null;
     }
     this.events.removeAllListeners();
     this.events = null;
@@ -106,20 +107,16 @@ var Connection = (function () {
       return console.warn("nexus-uplink-client", "connect");
     });
     _.dev(function () {
-      return (_this3.io === null).should.be.ok && _this3.isConnected.should.not.be.ok && (_this3._connectionAttempts === 1 || _this3._connectionTimeout !== null).should.be.ok;
+      return (_this3._io === null).should.be.ok && _this3.isConnected.should.not.be.ok && (_this3._connectionAttempts === 1 || _this3._connectionTimeout !== null).should.be.ok;
     });
     this._connectionTimeout = null;
-    this.io = createEngineIOClient(this.url);
-    this.io.on("open", function () {
+    this._io = createEngineIOClient(this.url).addListener("open", function () {
       return _this3.handleIOOpen();
-    });
-    this.io.on("close", function () {
+    }).addListener("close", function () {
       return _this3.handleIOClose();
-    });
-    this.io.on("error", function (err) {
+    }).addListener("error", function (err) {
       return _this3.handleIOError(err);
-    });
-    this.io.on("message", function (json) {
+    }).addListener("message", function (json) {
       return _this3.handleIOMessage(json);
     });
   };
@@ -141,8 +138,8 @@ var Connection = (function () {
     });
     if (!this.isDestroyed) {
       this._isConnected = false;
-      this.io.removeAllListeners();
-      this.io = null;
+      this._io.removeAllListeners("open").removeAllListeners("close").removeAllListeners("error").removeAllListeners("message");
+      this._io = null;
       this.reconnect();
     }
   };
@@ -252,7 +249,7 @@ var Connection = (function () {
       return console.warn("nexus-uplink-client", "handshakeTimeout");
     });
     // Will implicitly call this.reconnect() in this.handleIOClose().
-    this.io.close();
+    this._io.close();
   };
 
   Connection.prototype.remoteSend = function (event, params) {
@@ -261,9 +258,9 @@ var Connection = (function () {
       return console.warn("nexus-uplink-client", ">>", event, params);
     });
     _.dev(function () {
-      return (_this6.io !== null).should.be.ok && event.should.be.a.String && (params === null || _.isObject(params)).should.be.ok;
+      return (_this6._io !== null).should.be.ok && event.should.be.a.String && (params === null || _.isObject(params)).should.be.ok;
     });
-    this.io.send(JSON.stringify({ event: event, params: params }));
+    this._io.send(JSON.stringify({ event: event, params: params }));
   };
 
   Connection.prototype.remoteHandshake = function () {
@@ -387,7 +384,7 @@ var Connection = (function () {
 
 _.extend(Connection.prototype, {
   _destroyed: null,
-  io: null,
+  _io: null,
   url: null,
   guid: null,
   handshakeTimeout: null,

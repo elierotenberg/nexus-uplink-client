@@ -34,6 +34,7 @@ class Connection {
       events: new EventEmitter(),
       subscribedPaths: {},
       listenedRooms: {},
+      _io: null,
     });
 
     this.resetConnectionAttempts();
@@ -43,9 +44,9 @@ class Connection {
   destroy() {
     _.dev(() => this.isDestroyed.should.not.be.ok);
     this._isDestroyed = true;
-    if(this.io !== null) {
-      this.io.close();
-      this.io = null;
+    if(this._io !== null) {
+      this._io.close();
+      this._io = null;
     }
     this.events.removeAllListeners();
     this.events = null;
@@ -91,16 +92,16 @@ class Connection {
 
   connect() {
     _.dev(() => console.warn('nexus-uplink-client', 'connect'));
-    _.dev(() => (this.io === null).should.be.ok &&
+    _.dev(() => (this._io === null).should.be.ok &&
       this.isConnected.should.not.be.ok &&
       (this._connectionAttempts === 1 || this._connectionTimeout !== null).should.be.ok
     );
     this._connectionTimeout = null;
-    this.io = createEngineIOClient(this.url);
-    this.io.on('open', () => this.handleIOOpen());
-    this.io.on('close', () => this.handleIOClose());
-    this.io.on('error', (err) => this.handleIOError(err));
-    this.io.on('message', (json) => this.handleIOMessage(json));
+    this._io = createEngineIOClient(this.url)
+    .addListener('open', () => this.handleIOOpen())
+    .addListener('close', () => this.handleIOClose())
+    .addListener('error', (err) => this.handleIOError(err))
+    .addListener('message', (json) => this.handleIOMessage(json));
   }
 
   handleIOOpen() {
@@ -113,8 +114,12 @@ class Connection {
     _.dev(() => console.warn('nexus-uplink-client', 'close'));
     if(!this.isDestroyed) {
       this._isConnected = false;
-      this.io.removeAllListeners();
-      this.io = null;
+      this._io
+      .removeAllListeners('open')
+      .removeAllListeners('close')
+      .removeAllListeners('error')
+      .removeAllListeners('message');
+      this._io = null;
       this.reconnect();
     }
   }
@@ -199,16 +204,16 @@ class Connection {
   handleHandshakeTimeout() {
     _.dev(() => console.warn('nexus-uplink-client', 'handshakeTimeout'));
     // Will implicitly call this.reconnect() in this.handleIOClose().
-    this.io.close();
+    this._io.close();
   }
 
   remoteSend(event, params) {
     _.dev(() => console.warn('nexus-uplink-client', '>>', event, params));
-    _.dev(() => (this.io !== null).should.be.ok &&
+    _.dev(() => (this._io !== null).should.be.ok &&
       event.should.be.a.String &&
       (params === null || _.isObject(params)).should.be.ok
     );
-    this.io.send(JSON.stringify({ event, params }));
+    this._io.send(JSON.stringify({ event, params }));
   }
 
   remoteHandshake() {
@@ -296,7 +301,7 @@ class Connection {
 
 _.extend(Connection.prototype, {
   _destroyed: null,
-  io: null,
+  _io: null,
   url: null,
   guid: null,
   handshakeTimeout: null,
