@@ -36,7 +36,8 @@ var Uplink = (function () {
       var path = _ref2.path;
       var diff = _ref2.diff;
       var hash = _ref2.hash;
-      return _this._handleUpdate({ path: path, diff: diff, hash: hash });
+      var nextHash = _ref2.nextHash;
+      return _this._handleUpdate({ path: path, diff: diff, hash: hash, nextHash: nextHash });
     });
     this._connection.events.on("emit", function (_ref3) {
       var room = _ref3.room;
@@ -79,7 +80,7 @@ var Uplink = (function () {
     if (this._storeCache[path]) {
       return Promise.resolve(this._storeCache[path].value);
     } else {
-      return this._refresh(path);
+      return this._refresh(path, null);
     }
   };
 
@@ -99,6 +100,10 @@ var Uplink = (function () {
     if (createdPath) {
       this._connection.subscribeTo(path);
     }
+    // Immediatly attempt to pull to sync the cache
+    this.pull(path).then(function (value) {
+      return subscription.update(value);
+    });
     return { subscription: subscription, createdPath: createdPath };
   };
 
@@ -145,6 +150,10 @@ var Uplink = (function () {
     var path = _ref5.path;
     var diff = _ref5.diff;
     var hash = _ref5.hash;
+    var nextHash = _ref5.nextHash;
+    _.dev(function () {
+      return path.should.be.a.String && diff.should.be.an.Object && (hash === null || _.isString(hash)).should.be.ok && (nextHash === null || _.isString(nextHash).should.be.ok);
+    });
     if (this._subscriptions[path] === void 0) {
       _.dev(function () {
         return console.warn("nexus-uplink-client", "update for path " + path + " without matching subscription");
@@ -154,7 +163,7 @@ var Uplink = (function () {
     if (this._storeCache[path] !== void 0 && this._storeCache[path].hash === hash) {
       return this._set(path, _.patch(this._storeCache[path].value, diff), Date.now());
     }
-    return this._refresh(path);
+    return this._refresh(path, nextHash);
   };
 
   Uplink.prototype._handleEmit = function (_ref6) {
@@ -187,13 +196,13 @@ var Uplink = (function () {
     }
   };
 
-  Uplink.prototype._refresh = function (path) {
+  Uplink.prototype._refresh = function (path, hash) {
     var _this4 = this;
     _.dev(function () {
       return path.should.be.a.String;
     });
     var tick = Date.now();
-    return this._requester.get(relative(this.url, path)).then(function (value) {
+    return this._requester.get("" + relative(this.url, path) + "?h=" + hash).then(function (value) {
       return _this4._set(path, value, tick);
     });
   };

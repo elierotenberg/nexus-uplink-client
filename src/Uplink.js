@@ -24,7 +24,7 @@ class Uplink {
       _connection: new Connection({ url, guid, handshakeTimeout, reconnectInterval, reconnectBackoff }),
       _requester: new Requester({ requestTimeout }),
     });
-    this._connection.events.on('update', ({ path, diff, hash }) => this._handleUpdate({ path, diff, hash }));
+    this._connection.events.on('update', ({ path, diff, hash, nextHash }) => this._handleUpdate({ path, diff, hash, nextHash }));
     this._connection.events.on('emit', ({ room, params }) => this._handleEmit({ room, params }));
     this._connection.events.on('handshakeAck', ({ pid }) => this._handleHanshakeAck({ pid }));
   }
@@ -56,7 +56,7 @@ class Uplink {
       return Promise.resolve(this._storeCache[path].value);
     }
     else {
-      return this._refresh(path);
+      return this._refresh(path, null);
     }
   }
 
@@ -76,6 +76,9 @@ class Uplink {
     if(createdPath) {
       this._connection.subscribeTo(path);
     }
+    // Immediatly attempt to pull to sync the cache
+    this.pull(path)
+    .then((value) => subscription.update(value));
     return { subscription, createdPath };
   }
 
@@ -116,7 +119,12 @@ class Uplink {
 
   // Private methods
 
-  _handleUpdate({ path, diff, hash }) {
+  _handleUpdate({ path, diff, hash, nextHash }) {
+    _.dev(() => path.should.be.a.String &&
+      diff.should.be.an.Object &&
+      (hash === null || _.isString(hash)).should.be.ok &&
+      (nextHash === null || _.isString(nextHash).should.be.ok)
+    );
     if(this._subscriptions[path] === void 0) {
       _.dev(() => console.warn('nexus-uplink-client', `update for path ${path} without matching subscription`));
       return;
@@ -124,7 +132,7 @@ class Uplink {
     if(this._storeCache[path] !== void 0 && this._storeCache[path].hash === hash) {
       return this._set(path, _.patch(this._storeCache[path].value, diff), Date.now());
     }
-    return this._refresh(path);
+    return this._refresh(path, nextHash);
   }
 
   _handleEmit({ room, params }) {
@@ -148,10 +156,10 @@ class Uplink {
     }
   }
 
-  _refresh(path) {
+  _refresh(path, hash) {
     _.dev(() => path.should.be.a.String);
     const tick = Date.now();
-    return this._requester.get(relative(this.url, path))
+    return this._requester.get(`${relative(this.url, path)}?h=${hash}`)
     .then((value) => this._set(path, value, tick));
   }
 
