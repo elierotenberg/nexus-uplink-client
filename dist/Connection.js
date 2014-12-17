@@ -212,10 +212,11 @@ var Connection = (function () {
     var path = _ref4.path;
     var diff = _ref4.diff;
     var hash = _ref4.hash;
+    var nextHash = _ref4.nextHash;
     _.dev(function () {
-      return path.should.be.a.String && diff.should.be.an.Object && (hash === null || _.isString(hash)).should.be.ok;
+      return path.should.be.a.String && diff.should.be.an.Object && (hash === null || _.isString(hash)).should.be.ok && (nextHash === null || _.isString(hash)).should.be.ok;
     });
-    this.events.emit("update", { path: path, diff: diff, hash: hash });
+    this.events.emit("update", { path: path, diff: diff, hash: hash, nextHash: nextHash });
   };
 
   Connection.prototype.handleMessageEmit = function (_ref5) {
