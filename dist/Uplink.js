@@ -13,6 +13,8 @@ var Connection = require("./Connection");
 var Listener = require("./Listener");
 var Subscription = require("./Subscription");
 
+var NO_VERSION = -1;
+
 var Uplink = (function () {
   var Uplink = function Uplink(_ref2) {
     var _this = this;
@@ -85,7 +87,7 @@ var Uplink = (function () {
     if (this._storeCache[path]) {
       return Promise.resolve(this._storeCache[path].value);
     } else {
-      return this._refresh(path, null);
+      return this._refresh(path, NO_VERSION);
     }
   };
 
@@ -205,11 +207,11 @@ var Uplink = (function () {
   Uplink.prototype._refresh = function (path, version) {
     var _this5 = this;
     _.dev(function () {
-      return path.should.be.a.String;
+      return path.should.be.a.String && version.should.be.a.Number;
     });
     var url = parse(resolve(this.url, path), true);
     url.query = url.query || {};
-    if (version !== void 0) {
+    if (version !== NO_VERSION) {
       url.query.v = version;
     }
     return this._requester.get(format(url)).then(function (value) {
@@ -219,7 +221,7 @@ var Uplink = (function () {
 
   Uplink.prototype._set = function (path, value, version) {
     _.dev(function () {
-      return path.should.be.a.String && (value === null || _.isObject(value)).should.be.ok && version.should.be.a.Number.and.be.above(0);
+      return path.should.be.a.String && (value === null || _.isObject(value)).should.be.ok && version.should.be.a.Number;
     });
     // Only update if there was no previous version or an older version
     if (this._storeCache[path] === void 0 || this._storeCache[path].version < version) {

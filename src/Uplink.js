@@ -6,6 +6,8 @@ const Connection = require('./Connection');
 const Listener = require('./Listener');
 const Subscription = require('./Subscription');
 
+const NO_VERSION = -1;
+
 class Uplink {
   constructor({ url, guid, requestTimeout, handshakeTimeout, reconnectInterval, reconnectBackoff, shouldReloadOnServerRestart }) {
     const _shouldReloadOnServerRestart = (shouldReloadOnServerRestart === void 0) ? true : !!shouldReloadOnServerRestart;
@@ -56,7 +58,7 @@ class Uplink {
       return Promise.resolve(this._storeCache[path].value);
     }
     else {
-      return this._refresh(path, null);
+      return this._refresh(path, NO_VERSION);
     }
   }
 
@@ -157,10 +159,10 @@ class Uplink {
   }
 
   _refresh(path, version) {
-    _.dev(() => path.should.be.a.String);
+    _.dev(() => path.should.be.a.String && version.should.be.a.Number);
     const url = parse(resolve(this.url, path), true);
     url.query = url.query || {};
-    if(version !== void 0) {
+    if(version !== NO_VERSION) {
       url.query.v = version;
     }
     return this._requester.get(format(url))
@@ -170,7 +172,7 @@ class Uplink {
   _set(path, value, version) {
     _.dev(() => path.should.be.a.String &&
       (value === null || _.isObject(value)).should.be.ok &&
-      version.should.be.a.Number.and.be.above(0)
+      version.should.be.a.Number
     );
     // Only update if there was no previous version or an older version
     if(this._storeCache[path] === void 0 || this._storeCache[path].version < version) {
