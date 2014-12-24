@@ -180,13 +180,13 @@ class Connection {
     this.resetConnectionAttempts();
   }
 
-  handleMessageUpdate({ path, diff, hash, nextHash }) {
+  handleMessageUpdate({ path, diff, prevVersion, nextVersion }) {
     _.dev(() => path.should.be.a.String &&
       diff.should.be.an.Object &&
-      (hash === null || _.isString(hash)).should.be.ok &&
-      (nextHash === null || _.isString(hash)).should.be.ok
+      prevVersion.should.be.a.Number &&
+      nextVersion.should.be.a.Number
     );
-    this.events.emit('update', { path, diff, hash, nextHash });
+    this.events.emit('update', { path, diff, prevVersion, nextVersion });
   }
 
   handleMessageEmit({ room, params }) {

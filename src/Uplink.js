@@ -1,5 +1,5 @@
 const _ = require('lodash-next');
-const relative = require('url').resolve;
+const { relative, parse, format } = require('url');
 
 const Requester = require('./Requester');
 const Connection = require('./Connection');
@@ -24,7 +24,7 @@ class Uplink {
       _connection: new Connection({ url, guid, handshakeTimeout, reconnectInterval, reconnectBackoff }),
       _requester: new Requester({ requestTimeout }),
     });
-    this._connection.events.on('update', ({ path, diff, hash, nextHash }) => this._handleUpdate({ path, diff, hash, nextHash }));
+    this._connection.events.on('update', ({ path, diff, prevVersion, nextVersion }) => this._handleUpdate({ path, diff, prevVersion, nextVersion }));
     this._connection.events.on('emit', ({ room, params }) => this._handleEmit({ room, params }));
     this._connection.events.on('handshakeAck', ({ pid }) => this._handleHanshakeAck({ pid }));
   }
@@ -78,7 +78,7 @@ class Uplink {
     }
     // Immediatly attempt to pull to sync the cache
     this.pull(path)
-    .then((value) => subscription.update(value));
+    .then((value) => subscription.update(value, this._storeCache[path].version));
     return { subscription, createdPath };
   }
 
@@ -119,20 +119,20 @@ class Uplink {
 
   // Private methods
 
-  _handleUpdate({ path, diff, hash, nextHash }) {
+  _handleUpdate({ path, diff, prevVersion, nextVersion }) {
     _.dev(() => path.should.be.a.String &&
       diff.should.be.an.Object &&
-      (hash === null || _.isString(hash)).should.be.ok &&
-      (nextHash === null || _.isString(nextHash).should.be.ok)
+      prevVersion.should.be.a.Number &&
+      nextVersion.should.be.a.Number
     );
     if(this._subscriptions[path] === void 0) {
       _.dev(() => console.warn('nexus-uplink-client', `update for path ${path} without matching subscription`));
       return;
     }
-    if(this._storeCache[path] !== void 0 && this._storeCache[path].hash === hash) {
-      return this._set(path, _.patch(this._storeCache[path].value, diff), Date.now());
+    if(this._storeCache[path] !== void 0 && this._storeCache[path].version === prevVersion) {
+      return this._set(path, _.patch(this._storeCache[path].value, diff), nextVersion);
     }
-    return this._refresh(path, nextHash);
+    return this._refresh(path, nextVersion);
   }
 
   _handleEmit({ room, params }) {
@@ -156,33 +156,37 @@ class Uplink {
     }
   }
 
-  _refresh(path, hash) {
+  _refresh(path, version) {
     _.dev(() => path.should.be.a.String);
-    const tick = Date.now();
-    return this._requester.get(`${relative(this.url, path)}?h=${hash}`)
-    .then((value) => this._set(path, value, tick));
+    const url = parse(relative(this.url, path), true);
+    url.query = url.query || {};
+    if(version !== void 0) {
+      url.query.v = version;
+    }
+    return this._requester.get(format(url))
+    .then((value) => this._set(path, value, version));
   }
 
-  _set(path, value, tick) {
+  _set(path, value, version) {
     _.dev(() => path.should.be.a.String &&
       (value === null || _.isObject(value)).should.be.ok &&
-      tick.should.be.a.Number.and.be.above(0)
+      version.should.be.a.Number.and.be.above(0)
     );
     // Only update if there was no previous version or an older version
-    if(this._storeCache[path] === void 0 || this._storeCache[path].tick < tick) {
-      this._storeCache[path] = { value, hash: _.hash(value), tick };
-      this._propagateUpdate(path, value);
+    if(this._storeCache[path] === void 0 || this._storeCache[path].version < version) {
+      this._storeCache[path] = { value, version };
+      this._propagateUpdate(path, value, version);
     }
     return this._storeCache[path].value;
   }
 
-  _propagateUpdate(path, value) {
+  _propagateUpdate(path, value, version) {
     _.dev(() => path.should.be.a.String &&
       (value === null || _.isObject(value)).should.be.ok
     );
     if(this._subscriptions[path] !== void 0) {
       Object.keys(this._subscriptions[path])
-      .forEach((k) => this._subscriptions[path][k].update(value));
+      .forEach((k) => this._subscriptions[path][k].update(value, version));
     }
   }
 

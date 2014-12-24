@@ -211,12 +211,12 @@ var Connection = (function () {
   Connection.prototype.handleMessageUpdate = function (_ref4) {
     var path = _ref4.path;
     var diff = _ref4.diff;
-    var hash = _ref4.hash;
-    var nextHash = _ref4.nextHash;
+    var prevVersion = _ref4.prevVersion;
+    var nextVersion = _ref4.nextVersion;
     _.dev(function () {
-      return path.should.be.a.String && diff.should.be.an.Object && (hash === null || _.isString(hash)).should.be.ok && (nextHash === null || _.isString(hash)).should.be.ok;
+      return path.should.be.a.String && diff.should.be.an.Object && prevVersion.should.be.a.Number && nextVersion.should.be.a.Number;
     });
-    this.events.emit("update", { path: path, diff: diff, hash: hash, nextHash: nextHash });
+    this.events.emit("update", { path: path, diff: diff, prevVersion: prevVersion, nextVersion: nextVersion });
   };
 
   Connection.prototype.handleMessageEmit = function (_ref5) {

@@ -1,7 +1,12 @@
 "use strict";
 
 require("6to5/polyfill");var Promise = (global || window).Promise = require("lodash-next").Promise;var __DEV__ = (process.env.NODE_ENV !== "production");var __PROD__ = !__DEV__;var __BROWSER__ = (typeof window === "object");var __NODE__ = !__BROWSER__;var _ = require("lodash-next");
-var relative = require("url").resolve;
+var _ref = require("url");
+
+var relative = _ref.relative;
+var parse = _ref.parse;
+var format = _ref.format;
+
 
 var Requester = require("./Requester");
 var Connection = require("./Connection");
@@ -9,15 +14,15 @@ var Listener = require("./Listener");
 var Subscription = require("./Subscription");
 
 var Uplink = (function () {
-  var Uplink = function Uplink(_ref) {
+  var Uplink = function Uplink(_ref2) {
     var _this = this;
-    var url = _ref.url;
-    var guid = _ref.guid;
-    var requestTimeout = _ref.requestTimeout;
-    var handshakeTimeout = _ref.handshakeTimeout;
-    var reconnectInterval = _ref.reconnectInterval;
-    var reconnectBackoff = _ref.reconnectBackoff;
-    var shouldReloadOnServerRestart = _ref.shouldReloadOnServerRestart;
+    var url = _ref2.url;
+    var guid = _ref2.guid;
+    var requestTimeout = _ref2.requestTimeout;
+    var handshakeTimeout = _ref2.handshakeTimeout;
+    var reconnectInterval = _ref2.reconnectInterval;
+    var reconnectBackoff = _ref2.reconnectBackoff;
+    var shouldReloadOnServerRestart = _ref2.shouldReloadOnServerRestart;
     var _shouldReloadOnServerRestart = (shouldReloadOnServerRestart === void 0) ? true : !!shouldReloadOnServerRestart;
     guid = (guid === void 0) ? _.guid() : guid;
     _.dev(function () {
@@ -32,20 +37,20 @@ var Uplink = (function () {
       _storeCache: {},
       _connection: new Connection({ url: url, guid: guid, handshakeTimeout: handshakeTimeout, reconnectInterval: reconnectInterval, reconnectBackoff: reconnectBackoff }),
       _requester: new Requester({ requestTimeout: requestTimeout }) });
-    this._connection.events.on("update", function (_ref2) {
-      var path = _ref2.path;
-      var diff = _ref2.diff;
-      var hash = _ref2.hash;
-      var nextHash = _ref2.nextHash;
-      return _this._handleUpdate({ path: path, diff: diff, hash: hash, nextHash: nextHash });
+    this._connection.events.on("update", function (_ref3) {
+      var path = _ref3.path;
+      var diff = _ref3.diff;
+      var prevVersion = _ref3.prevVersion;
+      var nextVersion = _ref3.nextVersion;
+      return _this._handleUpdate({ path: path, diff: diff, prevVersion: prevVersion, nextVersion: nextVersion });
     });
-    this._connection.events.on("emit", function (_ref3) {
-      var room = _ref3.room;
-      var params = _ref3.params;
+    this._connection.events.on("emit", function (_ref4) {
+      var room = _ref4.room;
+      var params = _ref4.params;
       return _this._handleEmit({ room: room, params: params });
     });
-    this._connection.events.on("handshakeAck", function (_ref4) {
-      var pid = _ref4.pid;
+    this._connection.events.on("handshakeAck", function (_ref5) {
+      var pid = _ref5.pid;
       return _this._handleHanshakeAck({ pid: pid });
     });
   };
@@ -92,6 +97,7 @@ var Uplink = (function () {
   };
 
   Uplink.prototype.subscribeTo = function (path, handler) {
+    var _this3 = this;
     _.dev(function () {
       return path.should.be.a.String && handler.should.be.a.Function;
     });
@@ -102,7 +108,7 @@ var Uplink = (function () {
     }
     // Immediatly attempt to pull to sync the cache
     this.pull(path).then(function (value) {
-      return subscription.update(value);
+      return subscription.update(value, _this3._storeCache[path].version);
     });
     return { subscription: subscription, createdPath: createdPath };
   };
@@ -146,13 +152,13 @@ var Uplink = (function () {
     return { listener: listener, deletedRoom: deletedRoom };
   };
 
-  Uplink.prototype._handleUpdate = function (_ref5) {
-    var path = _ref5.path;
-    var diff = _ref5.diff;
-    var hash = _ref5.hash;
-    var nextHash = _ref5.nextHash;
+  Uplink.prototype._handleUpdate = function (_ref6) {
+    var path = _ref6.path;
+    var diff = _ref6.diff;
+    var prevVersion = _ref6.prevVersion;
+    var nextVersion = _ref6.nextVersion;
     _.dev(function () {
-      return path.should.be.a.String && diff.should.be.an.Object && (hash === null || _.isString(hash)).should.be.ok && (nextHash === null || _.isString(nextHash).should.be.ok);
+      return path.should.be.a.String && diff.should.be.an.Object && prevVersion.should.be.a.Number && nextVersion.should.be.a.Number;
     });
     if (this._subscriptions[path] === void 0) {
       _.dev(function () {
@@ -160,15 +166,15 @@ var Uplink = (function () {
       });
       return;
     }
-    if (this._storeCache[path] !== void 0 && this._storeCache[path].hash === hash) {
-      return this._set(path, _.patch(this._storeCache[path].value, diff), Date.now());
+    if (this._storeCache[path] !== void 0 && this._storeCache[path].version === prevVersion) {
+      return this._set(path, _.patch(this._storeCache[path].value, diff), nextVersion);
     }
-    return this._refresh(path, nextHash);
+    return this._refresh(path, nextVersion);
   };
 
-  Uplink.prototype._handleEmit = function (_ref6) {
-    var room = _ref6.room;
-    var params = _ref6.params;
+  Uplink.prototype._handleEmit = function (_ref7) {
+    var room = _ref7.room;
+    var params = _ref7.params;
     if (this.listeners[room] === void 0) {
       _.dev(function () {
         return console.warn("nexus-uplink-client", "emit for room " + room + " without matching listener");
@@ -178,9 +184,9 @@ var Uplink = (function () {
     return this._propagateEmit(room, params);
   };
 
-  Uplink.prototype._handleHanshakeAck = function (_ref7) {
-    var _this3 = this;
-    var pid = _ref7.pid;
+  Uplink.prototype._handleHanshakeAck = function (_ref8) {
+    var _this4 = this;
+    var pid = _ref8.pid;
     _.dev(function () {
       return pid.should.be.a.String;
     });
@@ -188,7 +194,7 @@ var Uplink = (function () {
       this.pid = pid;
     } else if (this.pid !== pid) {
       _.dev(function () {
-        return console.warn("nexus-uplink-client", "handshakeAck with new pid", pid, _this3.pid);
+        return console.warn("nexus-uplink-client", "handshakeAck with new pid", pid, _this4.pid);
       });
       if (this._shouldReloadOnServerRestart && __BROWSER__) {
         window.location.reload(true);
@@ -196,49 +202,53 @@ var Uplink = (function () {
     }
   };
 
-  Uplink.prototype._refresh = function (path, hash) {
-    var _this4 = this;
+  Uplink.prototype._refresh = function (path, version) {
+    var _this5 = this;
     _.dev(function () {
       return path.should.be.a.String;
     });
-    var tick = Date.now();
-    return this._requester.get("" + relative(this.url, path) + "?h=" + hash).then(function (value) {
-      return _this4._set(path, value, tick);
+    var url = parse(relative(this.url, path), true);
+    url.query = url.query || {};
+    if (version !== void 0) {
+      url.query.v = version;
+    }
+    return this._requester.get(format(url)).then(function (value) {
+      return _this5._set(path, value, version);
     });
   };
 
-  Uplink.prototype._set = function (path, value, tick) {
+  Uplink.prototype._set = function (path, value, version) {
     _.dev(function () {
-      return path.should.be.a.String && (value === null || _.isObject(value)).should.be.ok && tick.should.be.a.Number.and.be.above(0);
+      return path.should.be.a.String && (value === null || _.isObject(value)).should.be.ok && version.should.be.a.Number.and.be.above(0);
     });
     // Only update if there was no previous version or an older version
-    if (this._storeCache[path] === void 0 || this._storeCache[path].tick < tick) {
-      this._storeCache[path] = { value: value, hash: _.hash(value), tick: tick };
-      this._propagateUpdate(path, value);
+    if (this._storeCache[path] === void 0 || this._storeCache[path].version < version) {
+      this._storeCache[path] = { value: value, version: version };
+      this._propagateUpdate(path, value, version);
     }
     return this._storeCache[path].value;
   };
 
-  Uplink.prototype._propagateUpdate = function (path, value) {
-    var _this5 = this;
+  Uplink.prototype._propagateUpdate = function (path, value, version) {
+    var _this6 = this;
     _.dev(function () {
       return path.should.be.a.String && (value === null || _.isObject(value)).should.be.ok;
     });
     if (this._subscriptions[path] !== void 0) {
       Object.keys(this._subscriptions[path]).forEach(function (k) {
-        return _this5._subscriptions[path][k].update(value);
+        return _this6._subscriptions[path][k].update(value, version);
       });
     }
   };
 
   Uplink.prototype._propagateEmit = function (room, params) {
-    var _this6 = this;
+    var _this7 = this;
     _.dev(function () {
       return room.should.be.a.String && (params === null) || _.isObject(params).should.be.ok;
     });
     if (this._listeners[room]) {
       Object.keys(this._listeners[room]).forEach(function (k) {
-        return _this6._listeners[room][k].emit(params);
+        return _this7._listeners[room][k].emit(params);
       });
     }
   };
