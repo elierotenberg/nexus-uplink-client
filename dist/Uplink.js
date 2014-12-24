@@ -3,9 +3,9 @@
 require("6to5/polyfill");var Promise = (global || window).Promise = require("lodash-next").Promise;var __DEV__ = (process.env.NODE_ENV !== "production");var __PROD__ = !__DEV__;var __BROWSER__ = (typeof window === "object");var __NODE__ = !__BROWSER__;var _ = require("lodash-next");
 var _ref = require("url");
 
-var relative = _ref.relative;
 var parse = _ref.parse;
 var format = _ref.format;
+var resolve = _ref.resolve;
 
 
 var Requester = require("./Requester");
@@ -93,7 +93,7 @@ var Uplink = (function () {
     _.dev(function () {
       return action.should.be.a.String && params.should.be.an.Object;
     });
-    return this._requester.post(relative(this.url, action), _.extend({}, params, { guid: this.guid }));
+    return this._requester.post(resolve(this.url, action), _.extend({}, params, { guid: this.guid }));
   };
 
   Uplink.prototype.subscribeTo = function (path, handler) {
@@ -121,7 +121,7 @@ var Uplink = (function () {
     var deletedPath = subscription.removeFrom(this._subscriptions);
     this._connection.unsubscribeFrom(path);
     if (deletedPath) {
-      this._connection.abort(relative(this.url, path));
+      this._connection.abort(resolve(this.url, path));
       delete this._storeCache[path];
       this._connection.unsubscribeFrom(path);
     }
@@ -207,7 +207,7 @@ var Uplink = (function () {
     _.dev(function () {
       return path.should.be.a.String;
     });
-    var url = parse(relative(this.url, path), true);
+    var url = parse(resolve(this.url, path), true);
     url.query = url.query || {};
     if (version !== void 0) {
       url.query.v = version;

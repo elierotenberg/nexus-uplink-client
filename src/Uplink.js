@@ -1,5 +1,5 @@
 const _ = require('lodash-next');
-const { relative, parse, format } = require('url');
+const { parse, format, resolve } = require('url');
 
 const Requester = require('./Requester');
 const Connection = require('./Connection');
@@ -64,7 +64,7 @@ class Uplink {
     _.dev(() => action.should.be.a.String &&
       params.should.be.an.Object
     );
-    return this._requester.post(relative(this.url, action), _.extend({}, params, { guid: this.guid }));
+    return this._requester.post(resolve(this.url, action), _.extend({}, params, { guid: this.guid }));
   }
 
   subscribeTo(path, handler) {
@@ -88,7 +88,7 @@ class Uplink {
     const deletedPath = subscription.removeFrom(this._subscriptions);
     this._connection.unsubscribeFrom(path);
     if(deletedPath) {
-      this._connection.abort(relative(this.url, path));
+      this._connection.abort(resolve(this.url, path));
       delete this._storeCache[path];
       this._connection.unsubscribeFrom(path);
     }
@@ -158,7 +158,7 @@ class Uplink {
 
   _refresh(path, version) {
     _.dev(() => path.should.be.a.String);
-    const url = parse(relative(this.url, path), true);
+    const url = parse(resolve(this.url, path), true);
     url.query = url.query || {};
     if(version !== void 0) {
       url.query.v = version;
