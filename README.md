@@ -55,6 +55,16 @@ You don't need to invalidate caches by yourself, just use an [LRU cache](http://
 
 The protocol is caching-aware and generates exactly one url per new version of each object, and doesn't resort to using timestamps, random hashes, or other cache-flooding magic.
 
+
+
+### Example (server-side)
+
+The server should perform well directly, but its recommended setup is to cache HTTP GET requests per url. Varnish or nginx are great at doing this.
+
+You don't need to invalidate caches by yourself, just configure Varnish/nginx to use [LRU or LFU cache](http://en.wikipedia.org/wiki/Cache_algorithms) (usually the default) and it should work fine.
+
+The protocol is caching-aware and generates exactly one url per new version of each object, and doesn't resort to using timestamps, random hashes, or other cache-flooding magic.
+
 ```js
 const { Engine, Server } = require('nexus-uplink-server');
 const engine = new Engine();
