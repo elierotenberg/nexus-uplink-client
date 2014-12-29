@@ -1,7 +1,7 @@
-Nexus Uplink Server (Simple)
-============================
+Nexus Uplink Client
+===================
 
-Nexus Uplink is an dead-simple, lightweight protocol on top of which [Flux over the Wire](codepen.io/write/flux-over-the-wire-part-1) can be implemented.
+Nexus Uplink is an dead-simple, lightweight microprotocol over HTTP and Websockets on top of which [Flux over the Wire](codepen.io/write/flux-over-the-wire-part-1) can be implemented.
 
 This package contains the implementation of the __client side__ component of Nexus Uplink.
 For the __server side__ component, see [nexus-uplink-simple-server](https://github.com/elierotenberg/nexus-uplink-simple-server).
