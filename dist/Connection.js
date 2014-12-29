@@ -18,11 +18,7 @@ var DEFAULT_RECONNECT_BACKOFF = 1.5;
  * Subscriptions & listeners bookkeeping is handled by the Uplink class.
  * Connection#events emits 'update', 'emit', and 'handshakeAck' events.
  */
-/**
- * This class only handles the low-level messages exchanges and handshakes.
- * Subscriptions & listeners bookkeeping is handled by the Uplink class.
- * Connection#events emits 'update', 'emit', and 'handshakeAck' events.
- */var Connection = function Connection(_ref) {
+var Connection = function Connection(_ref) {
   var url = _ref.url;
   var guid = _ref.guid;
   var handshakeTimeout = _ref.handshakeTimeout;

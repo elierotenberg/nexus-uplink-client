@@ -23,10 +23,7 @@ function promisify(req) {
  * Promise-based wrapper with avoid running the same request twice concurrently.
  * Also allows to abort/timeout fluently.
  */
-/**
- * Promise-based wrapper with avoid running the same request twice concurrently.
- * Also allows to abort/timeout fluently.
- */var Requester = function Requester(_ref) {
+var Requester = function Requester(_ref) {
   var _this = this;
   var requestTimeout = _ref.requestTimeout;
   this.requestTimeout = requestTimeout || DEFAULT_TIMEOUT;
