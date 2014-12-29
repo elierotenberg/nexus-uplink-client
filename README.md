@@ -7,9 +7,7 @@ This package contains the implementation of the __client side__ component of Nex
 For the __server side__ component, see [nexus-uplink-simple-server](https://github.com/elierotenberg/nexus-uplink-simple-server).
 
 Nexus Uplink combines very well with [React](http://facebook.github.io/react/) views on the client, and particularly with [React Nexus](https://github.com/elierotenberg/react-nexus), but it is not tied to either of these projects.
-
-
-## Core principles
+### Core principles
 
 Nexus Uplink is a simple communication protocol to allow:
 - Clients to fetch values, and receive updates, from a server-side store
@@ -32,7 +30,7 @@ Nexus Uplink Client                                             Nexus Uplink Ser
 ```
 
 
-## Performance first
+### Performance first
 
 Nexus Uplink is designed and implemented with strong performance concerns in minds.
 It is built from the ground up to support:
@@ -48,7 +46,51 @@ This bleeding edge performance is achieved using:
 - Action fast-path using the client-server Websocket channel when available
 - Easy and configurable transaction-based updates batching
 
-## Example (client-side)
+
+### Example (server-side)
+
+```js
+const { Engine, Server } = require('nexus-uplink-server');
+const engine = new Engine();
+const server = new Server(engine);
+// get (and implicitly instantiate) stores references
+// it is similar to a Remutable (map) instance, and is initially empty
+const todoList = engine.get('/todoList');
+const counters = engine.get('/counters');
+// Every 100ms, do a batch update: commit all
+// stores updates and sent patches to relevant
+// subscribers.
+setInterval(() => engine.comitAll(), 100);
+engine.addActionHandler('/add-todo-item', (clientID, { name, description }) => {
+  // schedule an update for the next commit
+  todoList.set(name, {
+    description,
+    addedBy: clientID,
+  });
+});
+engine.addActionHandler('/complete-todo-item', (clientID, { name }) => {
+  // todoList.working points to the current version, including non-commited changes
+  if(todoList.working.has(name) &&
+    todoList.working.get(name).addedBy === clientID) {
+    // schedule a deletion for the next commit
+    todoList.delete(name);
+  }
+  // We can commit immediatly and individually, though we should do this
+  // carefully to avoid spamming clients
+  todoList.commit();
+});
+// /session/create and /session/destroy are special, reserved actions
+engine.addActionHandler('/session/create', (clientID) => {
+  counters.set('active', counters.working.get('active') + 1);
+  counters.set('total', counters.working.get('total') + 1);
+});
+engine.addActionHandler('/session/destroy', (clientID) => {
+  counters.set('active', counters.working.get('active') - 1);
+});
+server.listen(8888);
+```
+
+### Example (client-side)
 
 ```js
 const { Engine, Client } = require('nexus-uplink-client');
@@ -79,53 +121,13 @@ counters.unsubscribe();
 // You don't have to subscribe to automatic updates.
 // You can also use Nexus Uplink manually.
 // fetch returns a Promise for an Immutable.Map.
-client.fetch('/counters').then((counters) => console.log('counters received', counters));
-
+client.fetch('/counters')
+.then((counters) => console.log('counters received', counters));
 ```
-
-
-## Example (server-side)
-
-```js
-const { Engine, Server } = require('nexus-uplink-server');
-const engine = new Engine();
-const server = new Server(engine);
-// get (and implicitly instantiate) stores references
-// it is similar to a Remutable (map) instance, and is initially empty
-const todoList = engine.get('/todoList');
-const counters = engine.get('/counters');
-// send batch updates every 100ms
-// you can commit on every mutation if you feel like so,
-// but batch updates are really the proper way to scale
-setInterval(() => {
-  // only commit if the object is not dirty
-  todoList.dirty || todoList.commit();
-  counters.dirty || counters.commit();
-}, 100);
-engine.addActionHandler('/add-todo-item', (clientID, { name, description }) => {
-  // schedule an update for the next commit
-  todoList.set(name, {
-    description,
-    addedBy: clientID,
-  });
-});
-engine.addActionHandler('/complete-todo-item', (clientID, { name }) => {
-  // todoList.working points to the current version, including non-commited changes
-  if(todoList.working.has(name) && todoList.working.get(name).addedBy === clientID) {
-    // schedule a deletion for the next commit
-    todoList.delete(name);
-  }
-});
-// /session/create and /session/destroy are special, reserved actions
-engine.addActionHandler('/session/create', (clientID) => {
-  counters.set('active', counters.working.get('active') + 1);
-  counters.set('total', counters.working.get('total') + 1);
-});
-engine.addActionHandler('/session/destroy', (clientID) => {
-  counters.set('active', counters.working.get('active') - 1);
-});
-server.listen(8888);
-```
-## One last thing
+### Isomorphic client
 
 The protocol is designed so that the client can be (and is) fully isomorphic. It means you can just `require` the client in either Node or the browser and it 'just works'. This is especially useful if you need to implement server-side rendering, as you now have a fully isomorphic data fetching stack.
+
+### Do I have to use ES6?
+
+No you don't, although its really easy and you should try it. `package.json` points to the `dist` folder, which is already transpiled to ES6 using `6to5`.
