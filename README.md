@@ -1,67 +1,131 @@
-Nexus Uplink Client (Isomorphic)
-================================
+Nexus Uplink Server (Simple)
+============================
 
-Nexus Uplink is an dead-simple, lightweight protocol on top of which Flux over the Wire can be implemented.
+Nexus Uplink is an dead-simple, lightweight protocol on top of which [Flux over the Wire](codepen.io/write/flux-over-the-wire-part-1) can be implemented.
 
-[On the client side](https://github.com/elierotenberg/nexus-uplink-client), a Nexus Uplink Client can react to stores updates, and dispatch actions.
-[On the server side](https://github.com/elierotenberg/nexus-uplink-simple-server), a Nexus Uplink Server can react to actions dispatchs, and update stores.
+This package contains the implementation of the __client side__ component of Nexus Uplink.
+For the __server side__ component, see [nexus-uplink-simple-server](https://github.com/elierotenberg/nexus-uplink-simple-server).
 
-Briefly:
-- actions are transported via POST requests (url pathname is the action identifier, JSON-encoded body is the payload)
-- updates are transported via Websocket (or Engine.IO fallback) (as diff objects)
+Nexus Uplink combines very well with [React](http://facebook.github.io/react/) views on the client, and particularly with [React Nexus](https://github.com/elierotenberg/react-nexus), but it is not tied to either of these projects.
 
-This package is an isomorphic (which means it can run on either Node.js or in the browser via browserify/webpack) implementation  of the Nexus Uplink client-side protocol.
-Also see the [simple server implementation](https://github.com/elierotenberg/nexus-uplink-simple-server) of the Nexus Uplink server-side protocol.
 
-Example
-=======
+## Core principles
 
-On the server:
+Nexus Uplink is a simple communication protocol to allow:
+- Clients to fetch values, and receive updates, from a server-side store
+- Clients to send actions, to a server-side dispatcher
+- Server to respond to actions, and mutate the store
+
+Implementation roughly is:
+- Store values are exposed via HTTP GET: clients can simply fire an HTTP GET request to retrieve them.
+- Actions are send via HTTP POST: clients can simply fire an HTTP POST request to send them.
+- Updates are dispatched via Websockets (or socket.io fallback)
+
+```
+        +--- stringify action ---> HTTP POST request --- parse action ---+
+        ^                                                                |
+        |                                                                v
+Nexus Uplink Client                                             Nexus Uplink Server
+        ^                                                                |
+        |                                                                v
+        +--- parse update --- Websocket message <--- stringify update ---+
+```
+
+
+## Performance first
+
+Nexus Uplink is designed and implemented with strong performance concerns in minds.
+It is built from the ground up to support:
+- Tens of thousands of concurrent users (more with the upcoming redis-based server implementation)
+- Thousands of updates per second
+- Thousands of actions per second
+
+This bleeding edge performance is achieved using:
+- [Immutable](https://github.com/facebook/immutable-js) internals, wrapped in [Remutable](https://github.com/elierotenberg/remutable) for ultra efficient patch broadcasting
+- Easy caching without cache invalidation pain (handled by the protocol), just put the server behind Varnish/nginx/whatever caching proxy and you're good to go
+- Optimized lazy memoization of message and patches JSON-encoding
+- One-way data flow
+- Action fast-path using the client-server Websocket channel when available
+- Easy and configurable transaction-based updates batching
+
+## Example (client-side)
 
 ```js
-var server = new UplinkSimpleServer({
-  pid: _.guid('pid'),
-  // stores, rooms and actions are url patterns whitelists
-  stores: ['/ping'],
-  rooms: [],
-  actions: ['/ping'],
-  // pass an express or express-like app
-  app: express().use(cors())
+const { Engine, Client } = require('nexus-uplink-client');
+// clientSecret must be a globally unique, cryptographic secret
+// it is typically generated at server-side rendering time
+const Engine = new Engine(clientSecret);
+const client = new Client(engine);
+// subscribe to several stores
+// the returned object is an Immutable.Map, initially empty
+const todoList = client.subscribe('/todoList');
+const counters = client.subscribe('/counters');
+// execute callback everytime a patch is received
+todoList.onUpdate((patch) => {
+  // 'patch' is a Remutable.Patch instance.
+  // In most cases though you will just dismiss it
+  // and read from the updated object directly.
+  console.log('patch received:', patch);
+  console.log('todoList has been updated to', todoList.head);
 });
-
-var pingCounter = 0;
-
-// setup action handlers
-server.actions.on('/ping', function(payload) {
-  // guid is a cryptosecure unique user id, automatically maintained
-  var guid = payload.guid;
-  var remoteDate = payload.localDate;
-  var localDate = Date.now();
-  console.log('client ' + guid + ' pinged.');
-  console.log('latency is ' + (localDate - remoteDate) + '.');
-  pingCounter++;
-  server.update({ path: '/ping', value: { counter: pingCounter }});
+counters.onUpdate(() => {
+  console.log('active users:', counters.get('active'));
+  console.log('total users:', counters.get('total'));
 });
+client.dispatch('/add-todo-item', {
+  name: 'My first item', description: 'This is my first item!'
+});
+counters.unsubscribe();
+// You don't have to subscribe to automatic updates.
+// You can also use Nexus Uplink manually.
+// fetch returns a Promise for an Immutable.Map.
+client.fetch('/counters').then((counters) => console.log('counters received', counters));
 
 ```
 
-On the client:
+
+## Example (server-side)
 
 ```js
-var client = new Uplink({ url: 'http://localhost' });
-
-// subscribe to remote updates
-client.subscribeTo('/ping', function(ping) {
-  console.log('ping updated', ping.counter);
+const { Engine, Server } = require('nexus-uplink-server');
+const engine = new Engine();
+const server = new Server(engine);
+// get (and implicitly instantiate) stores references
+// it is similar to a Remutable (map) instance, and is initially empty
+const todoList = engine.get('/todoList');
+const counters = engine.get('/counters');
+// send batch updates every 100ms
+// you can commit on every mutation if you feel like so,
+// but batch updates are really the proper way to scale
+setInterval(() => {
+  // only commit if the object is not dirty
+  todoList.dirty || todoList.commit();
+  counters.dirty || counters.commit();
+}, 100);
+engine.addActionHandler('/add-todo-item', (clientID, { name, description }) => {
+  // schedule an update for the next commit
+  todoList.set(name, {
+    description,
+    addedBy: clientID,
+  });
 });
-
-// fire-and-forget dispatch actions
-setInterval(function() {
-  client.dispatch('/ping', { localDate: Date.now() });
-}, 1000);
+engine.addActionHandler('/complete-todo-item', (clientID, { name }) => {
+  // todoList.working points to the current version, including non-commited changes
+  if(todoList.working.has(name) && todoList.working.get(name).addedBy === clientID) {
+    // schedule a deletion for the next commit
+    todoList.delete(name);
+  }
+});
+// /session/create and /session/destroy are special, reserved actions
+engine.addActionHandler('/session/create', (clientID) => {
+  counters.set('active', counters.working.get('active') + 1);
+  counters.set('total', counters.working.get('total') + 1);
+});
+engine.addActionHandler('/session/destroy', (clientID) => {
+  counters.set('active', counters.working.get('active') - 1);
+});
+server.listen(8888);
 ```
+## One last thing
 
-Installation
-============
-
-`npm install nexus-uplink-simple-server --save`
+The protocol is designed so that the client can be (and is) fully isomorphic. It means you can just `require` the client in either Node or the browser and it 'just works'. This is especially useful if you need to implement server-side rendering, as you now have a fully isomorphic data fetching stack.
