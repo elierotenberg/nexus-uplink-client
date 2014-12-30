@@ -107,33 +107,47 @@ const { Engine, Client } = require('nexus-uplink-client');
 // clientSecret must be a globally unique, cryptographic secret
 // it is typically generated at server-side rendering time
 const Engine = new Engine(clientSecret);
-const client = new Client(engine).start('http://localhost:8888');
+const client = new Client(engine, { url: 'http://localhost:8888' }).start();
 // subscribe to several stores
 // the returned object is like a Remutable instance, initially empty
-const todoList = client.subscribe('/todoList');
-const counters = client.subscribe('/counters');
+const todoListStore = engine.createStore('/todoList');
+const countersStore = engine.createStore('/todoList');
 // execute callback everytime a patch is received
-todoList.onChange((head, patch) => {
-  // 'head' is an Immutable.Map containing the updated values.
+todoListStore.onChange((todoList, patch) => {
+  // 'todoList' is an Immutable.Map containing the updated values.
   // 'patch' is a Remutable.Patch instance.
   // In most cases though you will just dismiss it
   // and read from the updated object directly, but it can be useful
   // to react directly to update or to implement an undo/redo stack.
   console.log('patch received:', patch);
-  console.log('todoList has been updated to', head);
+  console.log('todoList has been updated to', todoList);
 });
-counters.onChange((head) => { // here we just ignore the patch argument
-  console.log('active users:', head.get('active'));
-  console.log('total users:', head.get('total'));
+countersStore.onChange((counters) => { // here we just ignore the patch argument
+  console.log('active users:', counters.get('active'));
+  console.log('total users:', counters.get('total'));
 });
-client.dispatch('/add-todo-item', {
-  name: 'My first item', description: 'This is my first item!'
+countersStore.onDelete(() => { // the server has deleted the resource
+  // we probably wont need it afterwards.
+  countersStore.release();
 });
-counters.unsubscribe();
+// create an Action object
+const addTodoItemAction = engine.createAction('/add-todo-item');
+// dispatch it with a payload
+addTodoItemAction.dispatch({
+  name: 'My first item',
+  description: 'This is my first item!',
+});
+// dispatch with another payload
+addTodoItemAction.dispatch({
+  name: 'My second item',
+  description: 'This is my second item!',
+});
+// unsubscribe from updates and free held resources
+countersStore.release();
 // You don't have to subscribe to automatic updates.
 // You can also use Nexus Uplink manually.
 // fetch returns a Promise for an Immutable.Map.
-client.fetch('/counters')
+engine.fetch('/counters')
 // counters is an Immutable.Map
 .then((counters) => console.log('counters received', counters))
 .catch((reason) => console.warn('fetching failed because', reason));
