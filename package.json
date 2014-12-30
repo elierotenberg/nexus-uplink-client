@@ -33,7 +33,7 @@
   "dependencies": {
     "6to5": "^2.2.0",
     "engine.io-client": "^1.4.3",
-    "lodash-next": "^2.0.0",
+    "lodash-next": "^2.0.1",
     "nexus-uplink-common": "^0.6.1",
     "superagent": "^0.21.0"
   }
