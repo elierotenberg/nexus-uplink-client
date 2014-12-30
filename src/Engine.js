@@ -2,6 +2,8 @@ const { Message, MESSAGE_TYPES } = require('nexus-uplink-common');
 const Remutable = require('remutable');
 const { Patch } = Remutable;
 const { Requester } = require('immutable-request');
+const url = require('url');
+const _ = require('lodash-next');
 
 let _Engine = void 0; // alias of Engine to shut-up jshint
 
@@ -255,7 +257,7 @@ class Engine {
     _.dev(() => {
       path.should.be.a.String;
     });
-    this.handleReceivePatch(path, path);
+    this.handleReceivePatch(path, patch);
   }
 
   handleDelete({ path }) {
@@ -280,7 +282,7 @@ class Engine {
     this._handshake = {
       resolve: null,
       reject: null,
-      promise: null;
+      promise: null,
     };
     this._handshake.promise = new Promise((resolve, reject) => _.extend(this._handshake, { resolve, reject }));
     const message = Message.Handshake({ clientSecre: this._clientSecret });

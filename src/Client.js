@@ -1,5 +1,6 @@
 const EngineIOClient = require('engine.io-client');
 const { Requester } = require('immutable-request');
+const _ = require('lodash-next');
 
 module.exports = function(Engine) {
 
@@ -93,7 +94,7 @@ module.exports = function(Engine) {
 
     _handleConnectionSuccess() {
       _.dev(() => {
-        this._status.should.be.exactly(CLIENT_STATUS.CONNECTING)
+        this._status.should.be.exactly(CLIENT_STATUS.CONNECTING);
         this._failedAttempts.should.be.a.Number;
       });
       // Reset failed attempts counter
